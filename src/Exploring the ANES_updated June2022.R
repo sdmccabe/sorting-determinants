@@ -2,7 +2,8 @@
 #Created by Ethan Busby
 #13 June 2022
 ####First, set working directory and read in data####
-setwd("C:/Users/busby89/Google Drive/Sorting Project/Data sources/2020 ANES")
+#setwd("C:/Users/busby89/Google Drive/Sorting Project/Data sources/2020 ANES")
+setwd("~/datasets/anes/")
 library(readstata13)
 library(survey)
 library(ggplot2)
@@ -128,6 +129,7 @@ fa(cbind(anes20$RR_favor, anes20$RR_gen, anes20$RR_less, anes20$RR_try))
 #Good loadings
 
 anes20$RR=(anes20$RR_favor+anes20$RR_gen+anes20$RR_less+anes20$RR_try)/4
+
 
 #Let's split it into thirds and make binary variables
 quantile(anes20$RR, probs = c(.3333, .6666), na.rm=TRUE)
@@ -1359,7 +1361,7 @@ table(anes16$dem1)
 panel=anes20[anes20$V200003==2,]
 #This variable can be used to do the merging: V160001_orig
 #Weighting variable for the panel data is V200011a for pre-election and V200011b for post
-panel_combined=merge(panel, anes16, by.x="V160001_orig", by.y="V160001")
+panel_combined=merge(panel, anes16, by.x="V160001_orig", by.y="V160001_orig")
 
 #.x variables refer to 2020; .y variables refer to 2016
 
