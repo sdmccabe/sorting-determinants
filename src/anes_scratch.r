@@ -1,30 +1,39 @@
+## Exploring ANES data - alternate approach
+## This script produces data similar to that in the "Exploring the ANES"
+## script, but with minor changes here and there.
+##
+## I have tried to keep all variable names consistent between the two versions.
+
 library(tidyverse)
 library(haven)
 
+## load the original version of the data for comparison
 load("/home/main/git/sdmccabe/sorting-determinants/data/Sorting - 2020 ANES - updated.RData")
 
-recode <- function(var, pred, to=NA_real_) {
-    return(case_when(
+
+## Recode variables based on some predicate function. This
+## is primarily used for recoding variables whose values
+## fall in certain ranges to NA.
+recode <- function(var, pred, to = NA_real_) {
+    return(dplyr::case_when(
         is.na(var) ~ NA_real_,
         pred(var) ~ to,
         TRUE ~ as.numeric(var)
     ))
 }
 
-binarize <- function(var, pred = \(x)(x==1), missing_var=NA_real_) {
-  return(case_when(
-    is.na(var) ~ missing_var,
-    pred(var) ~ 1,
-    TRUE ~ 0
-  ))
-}
-
+## Quick script for reverse coding.
+## NOTE: this is assuming the maximum value for the range is observed.
+## For the Likert scales used here, with this many observations, that should
+## always be safe.
 reverse_code <- function(x) {
-  m = max(x, na.rm=T) + 1
+  m <- max(x, na.rm = TRUE) + 1
   return(abs(x - m))
 }
 
-is_negative <- function(x) { return(x < 0) }
+is_negative <- function(x) {
+  return(x < 0)
+}
 
 anes16 <- read_stata("/home/main/git/sdmccabe/sorting-determinants/data/anes_timeseries_2016.dta") |> zap_labels()
 anes20 <- read_stata("/home/main/git/sdmccabe/sorting-determinants/data/anes_timeseries_2020_stata_20220210.dta") |> zap_labels()
@@ -107,7 +116,7 @@ anes20 <- anes20 |>
     cbs_evening = V201630m,
     abc_world = V201630n,
     nbc_nightly = V201630p,
-    cuomo  = V201630q,
+    cuomo = V201630q,
     ncis = V201630r,
     american_idol = V201631a,
     erin_burnett = V201631b,
@@ -149,7 +158,7 @@ anes20 <- anes20 |>
     give017 = V202017,
     give019 = V202019,
     contact030 = V202030,
-    # NOTE: contact -> contact034
+    # NOTE: (duplicated variable) contact -> contact034
     contact034 = V202034,
     contact036 = V202036,
     give038 = V202038,
@@ -174,16 +183,19 @@ anes20 <- anes20 |>
   # recode negative values and values greater than 90 to NA
   # this is OK to do for age, because age is capped at 80
   mutate_at(vars(pid7:dem3), ~recode(., is_negative, NA_real_)) |>
-  mutate_at(vars(pid7:dem3), ~recode(., \(x)(x>=90), NA_real_))
+  mutate_at(vars(pid7:dem3), ~recode(., \(x) (x >= 90), NA_real_))
 
 anes20 <- anes20 |>
   mutate(
     dem = pid7 %in% 1:3,
     rep = pid7 %in% 5:7,
     # code has both definitions of `ind`, commented-out one is never used though
+    # previous mutate_at call has already recoded 99s to NA, explicitly remove
+    # pid7 from vars() if you want to change this
     # ind = pid7 %in% c(4, 99)
     ind = pid7 == 4,
-    # if that definition isn't being used, 99s should be recoded for later
+    # regardless of coding decision, pid7 needs 99s recoded later
+    # for constructing Mason sorting variables
     pid7 = case_when(pid7 == 99 ~ NA_real_, TRUE ~ pid7),
     ideo = reverse_code(ideo),
     male = gender == 1,
@@ -194,8 +206,7 @@ anes20 <- anes20 |>
     nativeamerican = race == 5,
     multiracial = race == 6,
     hisp = ethnicity == 4, # TODO: are these the right race/ethnicity codings?
-    union = binarize(union),
-    age = recode(age, \(x)(x <=0), NA_real_),
+    union = union == 1,
     age_18 = age %in% 18:29,
     age_30 = age %in% 30:44,
     age_45 = age %in% 45:64,
@@ -235,25 +246,26 @@ anes20 <- anes20 |>
     RR_favor = reverse_code(RR_favor),
     RR_try = reverse_code(RR_try),
     RR = (RR_favor + RR_gen + RR_less + RR_try) / 4,
-    RR1 = RR <= quantile(RR, probs=0.3333, na.rm=T),
-    RR2 = RR <= quantile(RR, probs=0.6666, na.rm=T),
-    RR3 = RR >= quantile(RR, probs=0.6666, na.rm=T),
+    RR1 = RR <= quantile(RR, probs = 0.3333, na.rm = TRUE),
+    RR2 = RR <= quantile(RR, probs = 0.6666, na.rm = TRUE),
+    RR3 = RR >= quantile(RR, probs = 0.6666, na.rm = TRUE),
     auth1 = auth1 == 2,
     auth2 = auth2 == 2,
     auth3 = auth3 == 1,
     auth4 = auth4 == 2,
-    AUTH = auth1+auth2+auth3+auth4,
-    AUTH1 = AUTH <= quantile(AUTH, probs=0.3333, na.rm=T),
-    AUTH2 = AUTH <= quantile(AUTH, probs=0.6666, na.rm=T),
-    AUTH3 = AUTH >= quantile(AUTH, probs=0.6666, na.rm=T),
+    AUTH = auth1 + auth2 + auth3 + auth4,
+    AUTH1 = AUTH <= quantile(AUTH, probs = 0.3333, na.rm = TRUE),
+    AUTH2 = AUTH <= quantile(AUTH, probs = 0.6666, na.rm = TRUE),
+    AUTH3 = AUTH >= quantile(AUTH, probs = 0.6666, na.rm = TRUE),
     egal1 = reverse_code(egal1),
     egal4 = reverse_code(egal4),
     EGAL = egal1 + egal2 + egal3 + egal4,
     sexism2 = reverse_code(sexism2),
     sexism3 = reverse_code(sexism3),
     sexism4 = reverse_code(sexism4),
-    # NOTE: sexism1 is a 7-point likert scale, but others are 5-point; shouldn't they be weighted differently?
-    SEXISM = (sexism1 + sexism2 + sexism3 + sexism4)/4,
+    # NOTE: sexism1 is a 7-point likert scale, but others are 5-point;
+    # shouldn't they be weighted differently?
+    SEXISM = (sexism1 + sexism2 + sexism3 + sexism4) / 4,
     # NOTE: same thing - are nationalism itmes on the same scale?
     nat1 = reverse_code(nat1),
     nat2 = reverse_code(nat2),
@@ -261,46 +273,54 @@ anes20 <- anes20 |>
     nat4 = reverse_code(nat4),
     nat5 = reverse_code(nat5),
     nat6 = reverse_code(nat6),
-    NAT = pmap_dbl(list(nat1, nat2, nat3, nat4, nat5, nat6), \(...)(mean(c(..., na.rm=F)))) ,
-    NAT2.1 = pmap_dbl(list(nat1, nat2, nat5, nat6), \(...)(mean(c(..., na.rm=F)))) ,
-    NAT2.2 = pmap_dbl(list(nat3, nat4), \(...)(mean(c(..., na.rm=F)))) ,
+    NAT = pmap_dbl(list(nat1, nat2, nat3, nat4, nat5, nat6),
+                  \(...) (mean(c(..., na.rm = FALSE)))),
+    NAT2.1 = pmap_dbl(list(nat1, nat2, nat5, nat6),
+                  \(...) (mean(c(..., na.rm = FALSE)))),
+    NAT2.2 = pmap_dbl(list(nat3, nat4),
+                  \(...) (mean(c(..., na.rm = FALSE)))),
     mortrad2 = reverse_code(mortrad2),
     fb_political = reverse_code(fb_political),
     tw_political = reverse_code(tw_political),
     #TODO: rd_political NAs need recoding
     rd_political = reverse_code(rd_political),
-    sm_political = pmap_dbl(list(fb_political, tw_political, rd_political), \(...)(mean(c(...), na.rm=T))),
+    sm_political = pmap_dbl(list(fb_political, tw_political, rd_political),
+                            \(...) (mean(c(...), na.rm = TRUE))),
     # NOTE: these variables are specific shows, return 1 if any are mentioned,
     # 0 otherwise
     # NOTE: what should na.rm be here? ethan has F
-    news_fox = max(hannity, tucker, the_five, ingraham, maccallum, baier, fox_and_friends, na.rm = T),
-    news_msnbc = max(maddow, lawrence, morning_joe, chris_hayes, brian_williams, na.rm = T),
-    news_cnn = max(tapper, anderson, cuomo, erin_burnett, na.rm = T),
+    news_fox = max(hannity, tucker, the_five, ingraham,
+                   maccallum, baier, fox_and_friends, na.rm = TRUE),
+    news_msnbc = max(maddow, lawrence, morning_joe,
+                     chris_hayes, brian_williams, na.rm = TRUE),
+    news_cnn = max(tapper, anderson, cuomo, erin_burnett, na.rm = TRUE),
     # NOTE: ethan has coded Refused as 0, should that be NA?
     know_senateterm = know_senateterm == 6,
     know_spend = know_spend == 1,
     know_house = know_house == 1,
     know_senate = know_senate == 2,
-    know_scale = pmap_dbl(list(know_senateterm, know_spend, know_house, know_senate), \(...)(mean(c(...), na.rm=T))),
+    know_scale = pmap_dbl(list(know_senateterm, know_spend,
+                               know_house, know_senate),
+                          (...) (mean(c(...), na.rm = TRUE))),
     pid7_str = abs(pid7 - 4) + 1,
     ideo_str = abs(ideo - 4) + 1,
     pidideostr1 = pid7_str * ideo_str,
-    overlap = abs(pid7 - ideo)+1,
+    overlap = abs(pid7 - ideo) + 1,
     overlap_rr =  reverse_code(overlap),
-    overlapxstr = overlap_rr*pidideostr1,
+    overlapxstr = overlap_rr * pidideostr1,
     sorting_r = (overlapxstr - 7) / 105,
     # NOTE: these two variables are identical
     vio_justy = vio_justscale > 1,
     viojustbi = vio_justscale > 1,
-    violence1 = violence/5,
+    violence1 = violence / 5,
     # NOTE: i think line 775 in ethan's code should have been
     # commented out, and am ignoring it
-    unrest = case_when(unrest==99 ~ NA_real_, TRUE ~ unrest),
+    unrest = case_when(unrest == 99 ~ NA_real_, TRUE ~ unrest),
     unrest1 = unrest / 7,
     unrestbi = unrest > 4,
     fairelecbi = fairelec > 3,
     # NOTE: double check `educ` vs `education`
-    #educ = case_when(educ == 95 ~ NA_real_, TRUE ~ educ),
+    # educ = case_when(educ == 95 ~ NA_real_, TRUE ~ educ),
     comp1.1 = reverse_code(comp1) / 5,
     comp2.1 = comp2 == 1,
     joinprotest = joined025 == 1,
@@ -323,19 +343,33 @@ anes20 <- anes20 |>
     bought142 = bought042 == 1,
     discuss122 = discuss022 == 1,
     posted129 = posted029 == 1,
-    OVERALLINDEX1 = pmap_dbl(list(talk109, attend113, attend114, wear115, work116, give117, give119, contact130, contact134, contact136, give138, contact140, joined125, signed126, bought142, discuss122, posted129), \(...)(mean(c(...), na.rm=F))),
-    SYSTEMICINDEX1 = pmap_dbl(list(talk109, attend113, attend114, wear115, work116, give117, give119, contact130, contact134, contact136, give138, contact140), \(...)(mean(c(...), na.rm=F))),
-    NONSYSTEMICINDEX1 = pmap_dbl(list(joined125, signed126, bought142, discuss122, posted129), \(...)(mean(c(...), na.rm=F))),
-    MASONINDEX1 = pmap_dbl(list(talk109, wear115, give117, joined125, work116), \(...)(mean(c(...), na.rm=F))),
+    OVERALLINDEX1 = pmap_dbl(list(talk109, attend113, attend114, wear115,
+                                  work116, give117, give119, contact130,
+                                  contact134, contact136, give138, contact140,
+                                  joined125, signed126, bought142, discuss122,
+                                  posted129),
+                             \(...) (mean(c(...), na.rm = FALSE))),
+    SYSTEMICINDEX1 = pmap_dbl(list(talk109, attend113, attend114, wear115,
+                                   work116, give117, give119, contact130,
+                                   contact134, contact136, give138, contact140),
+                              \(...) (mean(c(...), na.rm = FALSE))),
+    NONSYSTEMICINDEX1 = pmap_dbl(list(joined125, signed126, bought142,
+                                      discuss122, posted129),
+                                 \(...) (mean(c(...), na.rm = FALSE))),
+    MASONINDEX1 = pmap_dbl(list(talk109, wear115, give117,
+                           joined125, work116),
+                           \(...) (mean(c(...), na.rm = FALSE))),
     # NOTE: why is this only defined for non-independents?
-    # ftdifference = case_when(ind == 0 ~ abs(FT_dem-FT_rep), TRUE ~ NA_real_),
-    ftdifference = abs(FT_dem-FT_rep),
+    # disregarding for now, because I think it breaks one of
+    # the regression models later on.
+    # ftdifference = case_when(ind == 0 ~ abs(FT_dem - FT_rep), TRUE ~ NA_real),
+    ftdifference = abs(FT_dem - FT_rep),
     # NOTE: i need to think through what these values mean
     religscale = case_when(
       is.na(attend_church_ever) ~ NA_real_,
       attend_church_ever == 2 ~ 0,
       attend_church_more == 2 ~ 1,
-      TRUE ~ reverse_code(attend_church)/5
+      TRUE ~ reverse_code(attend_church) / 5
     ),
     bornagain = bornagain == 1,
     dem1 = case_when(
@@ -348,8 +382,10 @@ anes20 <- anes20 |>
     dem2 = dem2 / 5,
     # NOTE: very slight divergence from ethan's code here re: rounding
     dem3 = round(dem3 / 7, 2),
-    demsupport = pmap_dbl(list(dem1, dem2, dem3), \(...)(mean(c(...), na.rm=F))),
-    panel = as.numeric(sample_type == 2)
+    demsupport = pmap_dbl(list(dem1, dem2, dem3),
+                          \(...) (mean(c(...), na.rm = FALSE))),
+    # we wrote a bunch of these as pure boolean statements, but we
+    # actually want 0/1s, so now recode all of those T/Fs at once
   ) |> mutate_if(is_logical, as.numeric)
 
 anes16 <- anes16 |>
@@ -363,13 +399,12 @@ anes16 <- anes16 |>
     gender = V161342,
     race = V161310x,
     ethnicity = V161309,
-    #rural_identity = V202356,
     evang = V161266d,
     military = V161274a,
     union = V161302,
     age = V161267,
     num_guns = V161496,
-    # TODO: is this different from 2020?
+    # TODO: has the coding of this variable changed from 2020?
     class = V162132,
     education = V161270,
     parental_origin = V161315,
@@ -377,7 +412,7 @@ anes16 <- anes16 |>
     marital_status = V161268,
     sexual_orientation = V161511,
     num_children = V161324,
-    # TODO: double-check that coding order is same in 2016 and 2020
+    # TODO: has the coding of this variable changed from 2020?
     RR_gen = V162212,
     RR_favor = V162211,
     RR_less = V162213,
@@ -395,61 +430,14 @@ anes16 <- anes16 |>
     sexism3 = V162232,
     sexism4 = V162233,
     nat1 = V162123,
-    #nat2 = V162271,
     nat3 = V162271,
     nat4 = V162272,
     nat5 = V162273,
     nat6 = V162274,
     mortrad1 = V162207,
     mortrad2 = V162210,
-    # imp_partisan = V201232,
-    # imp_place = V202357,
-    # imp_evang = V201461,
-    # imp_fund = V201460,
-    # facebook = V202541a,
-    # twitter = V202541b,
-    # instagram = V202541c,
-    # reddit = V202541d,
-    # youtube = V202541e,
-    # snapchat = V202541f,
-    # tiktok = V202541g,
-    # sm_other = V202541h,
     facebook_tw = V161495,
-    # fb_political = V202543,
-    # tw_political = V202545,
-    # rd_political = V202547,
-    # colbert = V201630a,
-    # hannity = V201630b,
-    # tucker = V201630c,
-    # maddow = V201630d,
-    # lawrence = V201630e,
-    # the_five = V201630f,
-    # ingraham = V201630g,
-    # maccallum = V201630h,
-    # tapper = V201630i,
-    # anderson = V201630j,
-    # baier = V201630k,
-    # cbs_evening = V201630m,
-    # abc_world = V201630n,
-    # nbc_nightly = V201630p,
-    # cuomo  = V201630q,
-    # ncis = V201630r,
-    # american_idol = V201631a,
-    # erin_burnett = V201631b,
-    # sixty_minutes = V201631c,
-    # twenty_twenty = V201631d,
-    # dateline = V201631e,
-    # face_the_nation = V201631f,
-    # meet_the_press = V201631g,
-    # cbs_this_morning = V201631h,
-    # gma = V201631i,
-    # nbc_today = V201631j,
-    # fox_and_friends = V201631k,
-    # morning_joe = V201631m,
-    # chris_hayes = V201631n,
-    # brian_williams = V201631p,
-    # newshour = V201631q,
-    # snl = V201631r,
+    # NOTE: different set of TV shows to work on than 2020
     twenty_twenty = V161364,
     chris_hayes = V161365,
     blacklist = V161366,
@@ -503,8 +491,6 @@ anes16 <- anes16 |>
     know_house = V161515,
     know_senate = V161516,
     vio_justscale = V161344,
-    # violence = V201432x,
-    # unrest = V201429,
     fairelec = V162219,
     demsat = V162290,
     compprinc = V161171,
@@ -512,7 +498,6 @@ anes16 <- anes16 |>
     comp2 = V161171,
     community = V162195,
     talk009 = V162010,
-    #attend013 = V202013,
     attend014 = V162011,
     wear015 = V162012,
     work016 = V162013,
@@ -527,7 +512,6 @@ anes16 <- anes16 |>
     signed026 = V162018b,
     bought042 = V162141,
     discuss022 = V162174,
-    #posted029 = V202029,
     FT_dem = V161095,
     FT_rep = V161096,
     attend_church_ever = V161244,
@@ -535,23 +519,18 @@ anes16 <- anes16 |>
     attend_church_more = V161245a,
     bornagain = V161263,
     dem1 = V162290
-    #dem2 = V201367,
-    #dem3 = V201372x,
-    #sample_type = V200003,
   ) |>
   mutate_at(vars(pid7:dem1), ~recode(., is_negative, NA_real_)) |>
-  mutate_at(vars(pid7:dem1), ~recode(., \(x)(x>=90), NA_real_))
+  mutate_at(vars(pid7:dem1), ~recode(., \(x) (x >= 90), NA_real_))
 
 
 anes16 <- anes16 |>
   mutate(
     dem = pid7 %in% 1:3,
     rep = pid7 %in% 5:7,
-    # code has both definitions of `ind`, commented-out one is never used though
-    # ind = pid7 %in% c(4, 99)
+    # NOTE: see discuss of coding of `ind` in anes20
     ind = pid7 == 4,
-    # if that definition isn't being used, 99s should be recoded for later
-    pid7 = case_when(pid7 == 99 ~ NA_real_, TRUE ~ pid7),
+    # pid7 = case_when(pid7 == 99 ~ NA_real_, TRUE ~ pid7),
     ideo = reverse_code(ideo),
     male = gender == 1,
     female = gender == 2,
@@ -561,16 +540,11 @@ anes16 <- anes16 |>
     nativeamerican = race == 5,
     multiracial = race == 6,
     hisp = ethnicity == 4,
-    union = binarize(union),
-    age = recode(age, \(x)(x <=0), NA_real_),
+    union = union == 1,
     age_18 = age %in% 18:29,
     age_30 = age %in% 30:44,
     age_45 = age %in% 45:64,
     age_65 = age > 65,
-    # urban = rural_identity == 1,
-    # suburb = rural_identity == 2,
-    # smalltown = rural_identity == 3,
-    # rural = rural_identity == 4,
     evang = evang %in% c(2, 3),
     military = military %in% c(1, 2),
     gun = num_guns > 0,
@@ -602,78 +576,71 @@ anes16 <- anes16 |>
     RR_favor = reverse_code(RR_favor),
     RR_try = reverse_code(RR_try),
     RR = (RR_favor + RR_gen + RR_less + RR_try) / 4,
-    RR1 = RR <= quantile(RR, probs=0.3333, na.rm=T),
-    RR2 = RR <= quantile(RR, probs=0.6666, na.rm=T),
-    RR3 = RR >= quantile(RR, probs=0.6666, na.rm=T),
+    RR1 = RR <= quantile(RR, probs = 0.3333, na.rm = TRUE),
+    RR2 = RR <= quantile(RR, probs = 0.6666, na.rm = TRUE),
+    RR3 = RR >= quantile(RR, probs = 0.6666, na.rm = TRUE),
     auth1 = auth1 == 2,
     auth2 = auth2 == 2,
     auth3 = auth3 == 1,
     auth4 = auth4 == 2,
-    AUTH = auth1+auth2+auth3+auth4,
-    AUTH1 = AUTH <= quantile(AUTH, probs=0.3333, na.rm=T),
-    AUTH2 = AUTH <= quantile(AUTH, probs=0.6666, na.rm=T),
-    AUTH3 = AUTH >= quantile(AUTH, probs=0.6666, na.rm=T),
+    AUTH = auth1 + auth2 + auth3 + auth4,
+    AUTH1 = AUTH <= quantile(AUTH, probs = 0.3333, na.rm = TRUE),
+    AUTH2 = AUTH <= quantile(AUTH, probs = 0.6666, na.rm = TRUE),
+    AUTH3 = AUTH >= quantile(AUTH, probs = 0.6666, na.rm = TRUE),
     egal1 = reverse_code(egal1),
     egal4 = reverse_code(egal4),
     EGAL = egal1 + egal2 + egal3 + egal4,
     sexism2 = reverse_code(sexism2),
     sexism3 = reverse_code(sexism3),
     sexism4 = reverse_code(sexism4),
-    # NOTE: sexism1 is a 7-point likert scale, but others are 5-point; shouldn't they be weighted differently?
-    SEXISM = (sexism1 + sexism2 + sexism3 + sexism4)/4,
+    # NOTE: sexism1 is a 7-point likert scale, but others are 5-point;
+    # shouldn't they be weighted differently?
+    SEXISM = (sexism1 + sexism2 + sexism3 + sexism4) / 4,
     # NOTE: same thing - are nationalism itmes on the same scale?
     nat1 = reverse_code(nat1),
-    #nat2 = reverse_code(nat2),
     nat3 = reverse_code(nat3),
     nat4 = reverse_code(nat4),
     nat5 = reverse_code(nat5),
     nat6 = reverse_code(nat6),
-    NAT = pmap_dbl(list(nat1, nat3, nat4, nat5, nat6), \(...)(mean(c(..., na.rm=F)))) ,
-    NAT2.1 = pmap_dbl(list(nat1, nat5, nat6), \(...)(mean(c(..., na.rm=F)))) ,
-    NAT2.2 = pmap_dbl(list(nat3, nat4), \(...)(mean(c(..., na.rm=F)))) ,
+    NAT = pmap_dbl(list(nat1, nat3, nat4, nat5, nat6),
+                   \(...) (mean(c(..., na.rm = FALSE)))) ,
+    NAT2.1 = pmap_dbl(list(nat1, nat5, nat6),
+                      \(...) (mean(c(..., na.rm = FALSE)))) ,
+    NAT2.2 = pmap_dbl(list(nat3, nat4),
+                      \(...) (mean(c(..., na.rm = FALSE)))) ,
     mortrad2 = reverse_code(mortrad2),
-    # fb_political = reverse_code(fb_political),
-    # tw_political = reverse_code(tw_political),
-    #TODO: rd_political NAs need recoding
-    # rd_political = reverse_code(rd_political),
-    # sm_political = pmap_dbl(list(fb_political, tw_political, rd_political), \(...)(mean(c(...), na.rm=T))),
-    # NOTE: these variables are specific shows, return 1 if any are mentioned,
-    # 0 otherwise
-    # NOTE: what should na.rm be here?
-    news_fox = max(hannity, kelly, van_susteren, oreilly, na.rm=T),
-    news_msnbc = max(chris_matthews, maddow),
-    news_cnn = max(anderson, nancy_grace, erin_burnett, cnn_en_espanol),
+    news_fox = max(hannity, kelly, van_susteren, oreilly, na.rm = TRUE),
+    news_msnbc = max(chris_matthews, maddow, na.rm = TRUE),
+    news_cnn = max(anderson, nancy_grace,
+                   erin_burnett, cnn_en_espanol, na.rm = TRUE),
     # NOTE: ethan has coded Refused as 0, should that be NA?
+    # TODO: double-check the answers in 2016 are the same as 2020
     know_senateterm = know_senateterm == 6,
     know_spend = know_spend == 1,
     know_house = know_house == 1,
     know_senate = know_senate == 2,
-    know_scale = pmap_dbl(list(know_senateterm, know_spend, know_house, know_senate), \(...)(mean(c(...), na.rm=T))),
+    know_scale = pmap_dbl(list(know_senateterm, know_spend,
+                               know_house, know_senate),
+                          \(...) (mean(c(...), na.rm = TRUE))),
     pid7_str = abs(pid7 - 4) + 1,
     ideo_str = abs(ideo - 4) + 1,
     pidideostr1 = pid7_str * ideo_str,
-    overlap = abs(pid7 - ideo)+1,
+    overlap = abs(pid7 - ideo) + 1,
     overlap_rr =  reverse_code(overlap),
-    overlapxstr = overlap_rr*pidideostr1,
+    overlapxstr = overlap_rr * pidideostr1,
     sorting_r = (overlapxstr - 7) / 105,
     # NOTE: these two variables are identical
     vio_justy = vio_justscale > 1,
     viojustbi = vio_justscale > 1,
-    #violence1 = violence/5,
-    # NOTE: i think line 775 in ethan's code should have been
-    # commented out, and am ignoring it
-    #unrest = case_when(unrest==99 ~ NA_real_, TRUE ~ unrest),
-    #unrest1 = unrest / 7,
-    #unrestbi = unrest > 4,
     fairelecbi = fairelec > 3,
-    #educ = case_when(educ == 95 ~ NA_real_, TRUE ~ educ),
+    # TODO: resolve educ v. education
+    # educ = case_when(educ == 95 ~ NA_real_, TRUE ~ educ),
     comp1.1 = reverse_code(comp1) / 5,
     comp2.1 = comp2 == 1,
     joinprotest = joined025 == 1,
     commiss = community == 1,
     conoff = contact034 == 1,
     talk109 = talk009 == 1,
-    #attend113 = attend013 == 1,
     attend114 = attend014 == 1,
     wear115 = wear015 == 1,
     work116 = work016 == 1,
@@ -688,21 +655,28 @@ anes16 <- anes16 |>
     signed126 = signed026 == 1,
     bought142 = bought042 == 1,
     discuss122 = discuss022 == 1,
-    #posted129 = posted029 == 1,
-    OVERALLINDEX1 = pmap_dbl(list(talk109, attend114, wear115, work116, give117, give119, contact130, contact134, contact136, give138, contact140, joined125, signed126, bought142, discuss122), \(...)(mean(c(...), na.rm=F))),
-    SYSTEMICINDEX1 = pmap_dbl(list(talk109, attend114, wear115, work116, give117, give119, contact130, contact134, contact136, give138, contact140), \(...)(mean(c(...), na.rm=F))),
-    NONSYSTEMICINDEX1 = pmap_dbl(list(joined125, signed126, bought142, discuss122), \(...)(mean(c(...), na.rm=F))),
-    MASONINDEX1 = pmap_dbl(list(talk109, wear115, give117, joined125, work116), \(...)(mean(c(...), na.rm=F))),
-    # NOTE: why is this only defined for non-independents?
-    # NOTE: i'm going to change this, since it causes problems in the regression code
-    # ftdifference = case_when(ind == 0 ~ abs(FT_dem-FT_rep), TRUE ~ NA_real_),
-    ftdifference = abs(FT_dem-FT_rep),
-    # NOTE: i need to think through what these values mean
+    OVERALLINDEX1 = pmap_dbl(list(talk109, attend114, wear115, work116,
+                                  give117, give119, contact130, contact134,
+                                  contact136, give138, contact140, joined125,
+                                  signed126, bought142, discuss122),
+                             \(...) (mean(c(...), na.rm = FALSE))),
+    SYSTEMICINDEX1 = pmap_dbl(list(talk109, attend114, wear115, work116,
+                                   give117, give119, contact130, contact134,
+                                   contact136, give138, contact140),
+                              \(...) (mean(c(...), na.rm = FALSE))),
+    NONSYSTEMICINDEX1 = pmap_dbl(list(joined125, signed126,
+                                      bought142, discuss122),
+                                \(...) (mean(c(...), na.rm = FALSE))),
+    MASONINDEX1 = pmap_dbl(list(talk109, wear115, give117,
+                                joined125, work116),
+                           \(...) (mean(c(...), na.rm = FALSE))),
+    # NOTE: see discussion of variable change in anes20
+    ftdifference = abs(FT_dem - FT_rep),
     religscale = case_when(
       is.na(attend_church_ever) ~ NA_real_,
       attend_church_ever == 2 ~ 0,
       attend_church_more == 2 ~ 1,
-      TRUE ~ reverse_code(attend_church)/5
+      TRUE ~ reverse_code(attend_church) / 5
     ),
     bornagain = bornagain == 1,
     dem1 = case_when(
@@ -711,16 +685,11 @@ anes16 <- anes16 |>
       dem1 == 4 ~ 0.666,
       dem1 == 5 ~ 1,
       TRUE ~ NA_real_,
-    ),
-    #dem2 = dem2 / 5,
-    # NOTE: very slight divergence from ethan's code here re: rounding
-    #dem3 = round(dem3 / 7, 2),
-    #demsupport = pmap_dbl(list(dem1, dem2, dem3), \(...)(mean(c(...), na.rm=F))),
-    #panel = as.numeric(sample_type == 2)
-  ) |> mutate_if(is_logical, as.numeric)
+    )) |> mutate_if(is_logical, as.numeric)
 
 
-panel <- inner_join(anes20, anes16, by="panel_id")
-panel$panel = as.numeric(panel$sample_type == 2)
+panel <- inner_join(anes20, anes16, by = "panel_id")
+panel$panel <- as.numeric(panel$sample_type == 2)
 
+# write out my updated version. this also contains the original data
 save.image("/home/main/git/sdmccabe/sorting-determinants/data/stefan_sorting_data.RData")
