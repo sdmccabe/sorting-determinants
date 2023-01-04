@@ -9,10 +9,7 @@ library(tidymodels)
 # first cut - reproduce the original table
 # the results will differ because because of a change in weighting -
 # the ANES 2020s result were all accidentally unweighted in the manuscript.
-
-setwd("/home/main/git/sdmccabe/sorting-determinants/results/new_version")
-#load("/home/main/git/sdmccabe/sorting-determinants/data/Sorting - 2020 ANES - updated.RData")
-load("/home/main/git/sdmccabe/sorting-determinants/data/stefan_sorting_data.RData")
+load("data/stefan_sorting_data.RData")
 
 # these models all take the form DV ~ consistent set of predictors
 # so define the predictors, then use those to create the formulae
@@ -34,13 +31,25 @@ f8 <- update.formula(predictors, MASONINDEX1 ~ .)
 f9 <- update.formula(predictors, ftdifference ~ .)
 
 anes16$educ <- anes16$education
-sorting_formula <- sorting_r  ~ age + rep + ind + male + urban + smalltown + rural + income + educ + ideo + gay + bi + RR + AUTH + religscale + bornagain + white + know_scale + news_msnbc + news_cnn + news_fox
-sorting_formula_16 <- sorting_r  ~ age + rep + ind + male + income + educ + ideo + gay + bi + RR + AUTH + religscale + bornagain + white + know_scale + news_msnbc + news_cnn + news_fox
+sorting_formula <- sorting_r  ~ age + rep + ind + male + urban + smalltown +
+  rural + income + educ + ideo + gay + bi + RR + AUTH + religscale +
+  bornagain + white + know_scale + news_msnbc + news_cnn + news_fox
+sorting_formula_16 <- sorting_r  ~ age + rep + ind + male + income +
+  educ + ideo + gay + bi + RR + AUTH + religscale + bornagain +
+  white + know_scale + news_msnbc + news_cnn + news_fox
 
-sorting_2020 <- lm_robust(sorting_formula, data=anes20, weights = anes20$weight)
-sorting_2016 <- lm_robust(sorting_formula_16, data=anes16, weights = anes16$weight)
-sorting_2020_alt <- lm_robust(sorting_formula, data=anes20busby, weights = anes20busby$V200010b)
-sorting_2016_alt <- lm_robust(sorting_formula_16, data=anes16busby, weights = anes16busby$V160102)
+sorting_2020 <- lm_robust(sorting_formula,
+  data = anes20,
+  weights = anes20$weight)
+sorting_2016 <- lm_robust(sorting_formula_16,
+  data = anes16,
+  weights = anes16$weight)
+sorting_2020_alt <- lm_robust(sorting_formula,
+  data = anes20busby,
+  weights = anes20busby$V200010b)
+sorting_2016_alt <- lm_robust(sorting_formula_16,
+  data = anes16busby,
+  weights = anes16busby$V160102)
 
 
 m1 <- lm_robust(f1, data = anes20busby, weight = anes20busby$V200010b)
@@ -111,26 +120,29 @@ modelsummary(list(
   "Affective polarization" = m9
   ),
   coef_rename = coef_mapper,
-  output = "modelsummary.html",
+  output = "results/new_version/modelsummary.html",
   fmt = 2
   )
 
 lasso <- function(f, data, weights) {
-  mask <- subset(data, select=c(attr(terms(f), "term.labels"))) |> complete.cases()
-  masked_data <- data[mask,]
+  mask <- subset(data, select = c(attr(terms(f), "term.labels"))) |>
+    complete.cases()
+  masked_data <- data[mask, ]
+  # NOTE: this is assigning globally, but I wasn't able to get it working
+  # with normal scoping for reasons I couldn't really process.
   masked_w <<- weights[mask]
 
   assertthat::are_equal(dim(masked_data)[1], length(masked_w))
 
-  mat <- model.frame(formula=f, data=masked_data, weights=masked_w)
+  mat <- model.frame(formula = f, data = masked_data, weights = masked_w)
   y <- mat[, 1]
-  x <- mat[, 2:(dim(mat)[2]-1)] |> as.matrix()
+  x <- mat[, 2:(dim(mat)[2] - 1)] |> as.matrix()
   w <- mat[, dim(mat)[2]]
 
-  lasso_cv <- cv.glmnet(y=y, x=x, weights=w)
+  lasso_cv <- cv.glmnet(y = y, x = x, weights = w)
 
   lambda <- lasso_cv$lambda.min
-  out <- glmnet(y=y, x=x, lambda=lambda, alpha=1)
+  out <- glmnet(y = y, x = x, lambda = lambda, alpha = 1)
 
   return(out)
 }
@@ -153,12 +165,12 @@ l9 <- lasso(f9, data = anes20busby, weights = anes20busby$V200010b)
 #   return(out)
 # }
 # #
+
 tidy_custom.glmnet <- function(x, ...) {
-  #s <- summary(x)$coefficients
-  s <- as.matrix(coef(x))[, 1]
-   out <- data.frame(term = names(coef(x)[,1]),
-                     #estimate.Estimate = map_chr(coef(m1)[,1], ~ifelse(.==0, "•", .)))
-                     estimate = ifelse(coef(x)[,1] == 0, "0", round(coef(x)[,1], 2)))
+  out <- data.frame(term = names(coef(x)[, 1]),
+                    estimate = ifelse(coef(x)[, 1] == 0,
+                                      "0",
+                                      round(coef(x)[, 1], 2)))
   return(out)
 }
 
@@ -211,9 +223,9 @@ modelsummary(list(
   "2020 Sorting" = sorting_2020_alt
 ),
   coef_rename = coef_mapper,
-  stars=TRUE,
-  output = "sorting_predictors.html",
-  fmt=2
+  stars = TRUE,
+  output = "results/new_version/sorting_predictors.html",
+  fmt = 2
 )
 
 predictors <- . ~ sorting_r + age + rep + ind + male + urban + smalltown +
@@ -255,9 +267,9 @@ modelsummary(list(
   "Affective polarization" = m9
   ),
   coef_rename = coef_mapper,
-  output = "dem_DVs_2020.html",
+  output = "results/new_version/dem_DVs_2020.html",
   fmt = 2,
-  stars=TRUE
+  stars = TRUE
   )
 
 f1 <- update.formula(f1, ~ . - urban - rural - smalltown)
@@ -292,7 +304,7 @@ modelsummary(list(
   "Affective polarization" = m9
   ),
   coef_rename = coef_mapper,
-  output = "dem_DVs_2016.html",
+  output = "results/new_version/dem_DVs_2016.html",
   fmt = 2,
-  stars=TRUE
+  stars = TRUE
   )
