@@ -8,7 +8,7 @@ library(tidyverse)
 library(haven)
 
 ## load the original version of the data for comparison
-load("/home/main/git/sdmccabe/sorting-determinants/data/Sorting - 2020 ANES - updated.RData")
+load("data/Sorting - 2020 ANES - updated.RData")
 
 
 ## Recode variables based on some predicate function. This
@@ -35,8 +35,8 @@ is_negative <- function(x) {
   return(x < 0)
 }
 
-anes16 <- read_stata("/home/main/git/sdmccabe/sorting-determinants/data/anes_timeseries_2016.dta") |> zap_labels()
-anes20 <- read_stata("/home/main/git/sdmccabe/sorting-determinants/data/anes_timeseries_2020_stata_20220210.dta") |> zap_labels()
+anes16 <- read_stata("data/anes_timeseries_2016.dta") |> zap_labels()
+anes20 <- read_stata("data/anes_timeseries_2020_stata_20220210.dta") |> zap_labels()
 
 
 anes20 <- anes20 |>
@@ -289,11 +289,14 @@ anes20 <- anes20 |>
     # NOTE: these variables are specific shows, return 1 if any are mentioned,
     # 0 otherwise
     # NOTE: what should na.rm be here? ethan has F
-    news_fox = max(hannity, tucker, the_five, ingraham,
-                   maccallum, baier, fox_and_friends, na.rm = TRUE),
-    news_msnbc = max(maddow, lawrence, morning_joe,
-                     chris_hayes, brian_williams, na.rm = TRUE),
-    news_cnn = max(tapper, anderson, cuomo, erin_burnett, na.rm = TRUE),
+    news_fox = pmap_dbl(list(hannity, tucker, the_five, ingraham,
+                             maccallum, baier, fox_and_friends),
+                        \(...) (max(c(0, ...), na.rm = TRUE))),
+    news_msnbc = pmap_dbl(list(maddow, lawrence, morning_joe,
+                               chris_hayes, brian_williams),
+                          \(...) (max(c(0, ...), na.rm = TRUE))),
+    news_cnn = pmap_dbl(list(tapper, anderson, cuomo, erin_burnett),
+                        \(...) (max(c(0, ...), na.rm = TRUE))),
     # NOTE: ethan has coded Refused as 0, should that be NA?
     know_senateterm = know_senateterm == 6,
     know_spend = know_spend == 1,
@@ -301,7 +304,7 @@ anes20 <- anes20 |>
     know_senate = know_senate == 2,
     know_scale = pmap_dbl(list(know_senateterm, know_spend,
                                know_house, know_senate),
-                          (...) (mean(c(...), na.rm = TRUE))),
+                          \(...) (mean(c(...), na.rm = TRUE))),
     pid7_str = abs(pid7 - 4) + 1,
     ideo_str = abs(ideo - 4) + 1,
     pidideostr1 = pid7_str * ideo_str,
@@ -609,10 +612,13 @@ anes16 <- anes16 |>
     NAT2.2 = pmap_dbl(list(nat3, nat4),
                       \(...) (mean(c(..., na.rm = FALSE)))) ,
     mortrad2 = reverse_code(mortrad2),
-    news_fox = max(hannity, kelly, van_susteren, oreilly, na.rm = TRUE),
-    news_msnbc = max(chris_matthews, maddow, na.rm = TRUE),
-    news_cnn = max(anderson, nancy_grace,
-                   erin_burnett, cnn_en_espanol, na.rm = TRUE),
+    news_fox = pmap_dbl(list(hannity, kelly, van_susteren, oreilly),
+                        \(...) (max(c(0, ...), na.rm = TRUE))),
+    news_msnbc = pmap_dbl(list(chris_matthews, maddow),
+                          \(...) (max(c(0, ...), na.rm = TRUE))),
+    news_cnn = pmap_dbl(list(anderson, nancy_grace,
+                             erin_burnett, cnn_en_espanol),
+                        \(...) (max(c(0, ...), na.rm = TRUE))),
     # NOTE: ethan has coded Refused as 0, should that be NA?
     # TODO: double-check the answers in 2016 are the same as 2020
     know_senateterm = know_senateterm == 6,
@@ -692,4 +698,4 @@ panel <- inner_join(anes20, anes16, by = "panel_id")
 panel$panel <- as.numeric(panel$sample_type == 2)
 
 # write out my updated version. this also contains the original data
-save.image("/home/main/git/sdmccabe/sorting-determinants/data/stefan_sorting_data.RData")
+save.image("data/stefan_sorting_data.RData")
