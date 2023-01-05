@@ -169,8 +169,8 @@ l9 <- lasso(f9, data = anes20busby, weights = anes20busby$V200010b)
 tidy_custom.glmnet <- function(x, ...) {
   out <- data.frame(term = names(coef(x)[, 1]),
                     estimate = ifelse(coef(x)[, 1] == 0,
-                                      "0",
-                                      round(coef(x)[, 1], 2)))
+                                      "---",
+                                      as.character(round(coef(x)[, 1], 3))))
   return(out)
 }
 
@@ -186,10 +186,11 @@ modelsummary(list(
   "Affective polarization" = l9
   ),
   coef_map = coef_mapper,
-  output = "modelsummary_lasso.html",
+  output = "results/new_version/modelsummary_lasso.html",
   statistic = NULL,
   estimate = "estimate",
-  fmt = 2,
+  fmt = as.character,
+  return_zeros = TRUE
   )
 
 coef_mapper <- c(
