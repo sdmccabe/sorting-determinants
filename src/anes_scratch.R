@@ -183,7 +183,7 @@ anes20 <- anes20 |>
   # recode negative values and values greater than 90 to NA
   # this is OK to do for age, because age is capped at 80
   mutate_at(vars(pid7:dem3), ~recode(., is_negative, NA_real_)) |>
-  mutate_at(vars(pid7:dem3), ~recode(., \(x) (x >= 90), NA_real_))
+  mutate_at(vars(gender:dem3), ~recode(., \(x) (x >= 90), NA_real_))
 
 anes20 <- anes20 |>
   mutate(
@@ -192,11 +192,12 @@ anes20 <- anes20 |>
     # code has both definitions of `ind`, commented-out one is never used though
     # previous mutate_at call has already recoded 99s to NA, explicitly remove
     # pid7 from vars() if you want to change this
-    # ind = pid7 %in% c(4, 99)
-    ind = pid7 == 4,
+    ind = pid7 %in% c(4, 99),
+    # ind = pid7 == 4,
     # regardless of coding decision, pid7 needs 99s recoded later
     # for constructing Mason sorting variables
-    pid7 = case_when(pid7 == 99 ~ NA_real_, TRUE ~ pid7),
+    pid7 = case_when(pid7 >= 90 ~ 4, TRUE ~ pid7),
+    ideo = case_when(ideo >= 90 ~ 4, TRUE ~ ideo),
     ideo = reverse_code(ideo),
     male = gender == 1,
     female = gender == 2,
@@ -524,7 +525,8 @@ anes16 <- anes16 |>
     dem1 = V162290
   ) |>
   mutate_at(vars(pid7:dem1), ~recode(., is_negative, NA_real_)) |>
-  mutate_at(vars(pid7:dem1), ~recode(., \(x) (x >= 90), NA_real_))
+  # NOTE: this is not being applied to pid7 or ideo
+  mutate_at(vars(gender:dem1), ~recode(., \(x) (x >= 90), NA_real_))
 
 
 anes16 <- anes16 |>
@@ -532,8 +534,10 @@ anes16 <- anes16 |>
     dem = pid7 %in% 1:3,
     rep = pid7 %in% 5:7,
     # NOTE: see discuss of coding of `ind` in anes20
-    ind = pid7 == 4,
-    # pid7 = case_when(pid7 == 99 ~ NA_real_, TRUE ~ pid7),
+    ind = pid7 %in% c(4, 99),
+    # recode 99s to 4s (DK/Refuse to moderate)
+    pid7 = case_when(pid7 >= 90 ~ 4, TRUE ~ pid7),
+    ideo = case_when(ideo >= 90 ~ 4, TRUE ~ ideo),
     ideo = reverse_code(ideo),
     male = gender == 1,
     female = gender == 2,
