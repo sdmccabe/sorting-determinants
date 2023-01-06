@@ -1,3 +1,6 @@
+
+# Imports -----------------------------------------------------------------
+
 library(estimatr)
 library(tidyverse)
 library(glmnet)
@@ -5,65 +8,89 @@ library(glmnetUtils)
 library(modelsummary)
 library(tidymodels)
 
-# for now, focusing on reproducing Table A.4
-# first cut - reproduce the original table
-# the results will differ because because of a change in weighting -
-# the ANES 2020s result were all accidentally unweighted in the manuscript.
+
+# Functions ---------------------------------------------------------------
+
+# This is a wrapper function for doing LASSO with defaults for cross-validation
+lasso <- function(f, data, weights) {
+  mask <- subset(data, select = c(attr(terms(f), "term.labels"))) |>
+    complete.cases()
+  masked_data <- data[mask, ]
+  # NOTE: this is assigning globally, but I wasn't able to get it working
+  # with normal scoping for reasons I couldn't really process.
+  masked_w <<- weights[mask]
+
+  assertthat::are_equal(dim(masked_data)[1], length(masked_w))
+
+  mat <- model.frame(formula = f, data = masked_data, weights = masked_w)
+  y <- mat[, 1]
+  x <- mat[, 2:(dim(mat)[2] - 1)] |> as.matrix()
+  w <- mat[, dim(mat)[2]]
+
+  lasso_cv <- cv.glmnet(y = y, x = x, weights = w)
+
+  lambda <- lasso_cv$lambda.min
+  out <- glmnet(y = y, x = x, lambda = lambda, alpha = 1)
+
+  return(out)
+}
+
+
+# Custom tidier function for modelsummary -
+# when presenting LASSO results, use "---" to indicate which variables have
+# had their coefficients set to zero
+tidy_custom.glmnet <- function(x, ...) {
+  out <- data.frame(term = names(coef(x)[, 1]),
+                    estimate = ifelse(coef(x)[, 1] == 0,
+                                      "---",
+                                      as.character(round(coef(x)[, 1], 3))),
+                    p.value = NA_real_,
+                    std.error = NA_real_)
+  return(out)
+}
+
+# Data loading and preprocessing ------------------------------------------
+
 load("data/stefan_sorting_data.RData")
+
+# rename var
+anes16$educ <- anes16$education
+
+anes20_rep <- filter(anes20, rep == 1)
+anes20_dem <- filter(anes20, dem == 1)
+anes20_ind <- filter(anes20, ind == 1)
+
+anes16_rep <- filter(anes16, rep == 1)
+anes16_dem <- filter(anes16, dem == 1)
+anes16_ind <- filter(anes16, ind == 1)
+
+
+# Table A.4 --------------------  -------------------------------------------
+
+# NOTE: the results will differ because because of a change in weighting -
+# the ANES 2020s result were all accidentally unweighted in the manuscript.
 
 # these models all take the form DV ~ consistent set of predictors
 # so define the predictors, then use those to create the formulae
 predictors <- . ~ sorting_r + age + rep + ind + male + urban + smalltown +
   rural + income + educ + ideo + union + gun + married + gay + bi +
-  children + RR + AUTH + religscale + bornagain + white + know_scale + panel +
+  children + RR + AUTH + religscale + bornagain + white + know_scale +
   news_fox + news_cnn + news_msnbc + facebook + twitter + instagram + reddit +
   youtube + snapchat + tiktok + sm_other
 
+formulae <- list(
+  "Dissatisfaction with Democracy" = update.formula(predictors, dem1 ~ .),
+  "Checks and balances aren't important" = update.formula(predictors, dem2 ~ .),
+  "Helpful if president could act alone" = update.formula(predictors, dem3 ~ .),
+  "Support for political violence" = update.formula(predictors, vio_justy ~ .),
+  "Skeptical of election integrity" = update.formula(predictors, fairelec ~ .),
+  "Compromise is selling out" = update.formula(predictors, comp1.1 ~ .),
+  "Prefer leader sticks to principles" = update.formula(predictors, comp2.1 ~ .),
+  "Participation" = update.formula(predictors, MASONINDEX1 ~ .),
+  "Affective polarization" = update.formula(predictors, ftdifference ~ .)
+)
 
-f1 <- update.formula(predictors, dem1 ~ .)
-f2 <- update.formula(predictors, dem2 ~ .)
-f3 <- update.formula(predictors, dem3 ~ .)
-f4 <- update.formula(predictors, vio_justy ~ .)
-f5 <- update.formula(predictors, fairelec ~ .)
-f6 <- update.formula(predictors, comp1.1 ~ .)
-f7 <- update.formula(predictors, comp2.1 ~ .)
-f8 <- update.formula(predictors, MASONINDEX1 ~ .)
-f9 <- update.formula(predictors, ftdifference ~ .)
-
-anes16$educ <- anes16$education
-sorting_formula <- sorting_r  ~ age + rep + ind + male + urban + smalltown +
-  rural + income + educ + ideo + gay + bi + RR + AUTH + religscale +
-  bornagain + white + know_scale + news_msnbc + news_cnn + news_fox
-sorting_formula_16 <- sorting_r  ~ age + rep + ind + male + income +
-  educ + ideo + gay + bi + RR + AUTH + religscale + bornagain +
-  white + know_scale + news_msnbc + news_cnn + news_fox
-
-sorting_2020 <- lm_robust(sorting_formula,
-  data = anes20,
-  weights = anes20$weight)
-sorting_2016 <- lm_robust(sorting_formula_16,
-  data = anes16,
-  weights = anes16$weight)
-sorting_2020_alt <- lm_robust(sorting_formula,
-  data = anes20busby,
-  weights = anes20busby$V200010b)
-sorting_2016_alt <- lm_robust(sorting_formula_16,
-  data = anes16busby,
-  weights = anes16busby$V160102)
-
-
-m1 <- lm_robust(f1, data = anes20busby, weight = anes20busby$V200010b)
-m2 <- lm_robust(f2, data = anes20busby, weight = anes20busby$V200010b)
-m3 <- lm_robust(f3, data = anes20busby, weight = anes20busby$V200010b)
-m4 <- lm_robust(f4, data = anes20busby, weight = anes20busby$V200010b)
-m5 <- lm_robust(f5, data = anes20busby, weight = anes20busby$V200010b)
-m6 <- lm_robust(f6, data = anes20busby, weight = anes20busby$V200010b)
-m7 <- lm_robust(f7, data = anes20busby, weight = anes20busby$V200010b)
-m8 <- lm_robust(f8, data = anes20busby, weight = anes20busby$V200010b)
-m9 <- lm_robust(f9, data = anes20busby, weight = anes20busby$V200010b)
-
-
-
+models <- lapply(formulae, \(f)(lm_robust(f, data=anes20, anes20$weight)))
 
 # using modelsummary instead of stargazer. three reasons:
 # 1. it's a bit more flexible and has some nicer defaults
@@ -108,96 +135,64 @@ coef_mapper <- c(
     "sm_other" = "Other SM"
   )
 
-modelsummary(list(
-  "Dissatisfaction with Democracy" = m1,
-  "Checks and balances aren't important" = m2,
-  "Helpful if president could act alone" = m3,
-  "Support for political violence" = m4,
-  "Skeptical of election integrity" = m5,
-  "Compromise is selling out" = m6,
-  "Prefer leader sticks to principles" = m7,
-  "Participation" = m8,
-  "Affective polarization" = m9
-  ),
+modelsummary(models,
   coef_rename = coef_mapper,
-  output = "results/new_version/modelsummary.html",
+  output = "results/new_version/a4.html",
   fmt = 2
   )
 
-lasso <- function(f, data, weights) {
-  mask <- subset(data, select = c(attr(terms(f), "term.labels"))) |>
-    complete.cases()
-  masked_data <- data[mask, ]
-  # NOTE: this is assigning globally, but I wasn't able to get it working
-  # with normal scoping for reasons I couldn't really process.
-  masked_w <<- weights[mask]
+lasso_models <- lapply(formulae,
+  \(f)(lasso(f, data=anes20, weights=anes20$weight)))
 
-  assertthat::are_equal(dim(masked_data)[1], length(masked_w))
-
-  mat <- model.frame(formula = f, data = masked_data, weights = masked_w)
-  y <- mat[, 1]
-  x <- mat[, 2:(dim(mat)[2] - 1)] |> as.matrix()
-  w <- mat[, dim(mat)[2]]
-
-  lasso_cv <- cv.glmnet(y = y, x = x, weights = w)
-
-  lambda <- lasso_cv$lambda.min
-  out <- glmnet(y = y, x = x, lambda = lambda, alpha = 1)
-
-  return(out)
-}
-
-l1 <- lasso(f1, data = anes20busby, weights = anes20busby$V200010b)
-l2 <- lasso(f2, data = anes20busby, weights = anes20busby$V200010b)
-l3 <- lasso(f3, data = anes20busby, weights = anes20busby$V200010b)
-l4 <- lasso(f4, data = anes20busby, weights = anes20busby$V200010b)
-l5 <- lasso(f5, data = anes20busby, weights = anes20busby$V200010b)
-l6 <- lasso(f6, data = anes20busby, weights = anes20busby$V200010b)
-l7 <- lasso(f7, data = anes20busby, weights = anes20busby$V200010b)
-l8 <- lasso(f8, data = anes20busby, weights = anes20busby$V200010b)
-l9 <- lasso(f9, data = anes20busby, weights = anes20busby$V200010b)
-
-
-# glance_custom.glmnet <- function(x, ...) {
-#   #dv <- as.character(formula(x)[2])
-#    dv <- "DV"
-#   out <- data.frame("DV" = dv)
-#   return(out)
-# }
-# #
-
-tidy_custom.glmnet <- function(x, ...) {
-  out <- data.frame(term = names(coef(x)[, 1]),
-                    estimate = ifelse(coef(x)[, 1] == 0,
-                                      "---",
-                                      as.character(round(coef(x)[, 1], 3))))
-  return(out)
-}
-
-modelsummary(list(
-  "Dissatisfaction with Democracy" = l1,
-  "Checks and balances aren't important" = l2,
-  "Helpful if president could act alone" = l3,
-  "Support for political violence" = l4,
-  "Skeptical of election integrity" = l5,
-  "Compromise is selling out" = l6,
-  "Prefer leader sticks to principles" = l7,
-  "Participation" = l8,
-  "Affective polarization" = l9
-  ),
+modelsummary(lasso_models,
   coef_map = coef_mapper,
-  output = "results/new_version/modelsummary_lasso.html",
+  output = "results/new_version/a4_lasso.html",
   statistic = NULL,
   estimate = "estimate",
   fmt = as.character,
   return_zeros = TRUE
   )
 
+# Table A.1 ----------------------------------------------------------------
+
+sorting_formula <- sorting_r  ~ female + age + rep + ind + urban + smalltown +
+  rural + income + educ + ideo + union + gun + gay + bi +  children + RR +
+  AUTH + religscale + bornagain + white + facebook + twitter + instagram +
+  reddit + youtube + snapchat + tiktok + sm_other + news_msnbc + news_cnn +
+  news_fox + know_scale
+
+# substitute out 2020-only terms
+sorting_formula_16 <- update.formula(sorting_formula, ~ . -
+                                       urban - smalltown - rural -
+                                       facebook - twitter - instagram -
+                                       reddit - snapchat - tiktok - sm_other -
+                                       youtube + facebook_tw)
+
+sorting_2020 <- lm_robust(sorting_formula,
+  data = anes20,
+  weights = anes20$weight)
+sorting_2016 <- lm_robust(sorting_formula_16,
+  data = anes16,
+  weights = anes16$weight)
+sorting_2020_lasso <- lasso(sorting_formula,
+  data = anes20,
+  weights = anes20$weight)
+sorting_2016_lasso <- lasso(sorting_formula_16,
+  data = anes16,
+  weights = anes16$weight)
+
+models <- list(
+  "2016 Sorting (OLS)" = sorting_2016,
+  "2016 Sorting (LASSO)" = sorting_2016_lasso,
+  "2020 Sorting (OLS)" = sorting_2020,
+  "2020 Sorting (LASSO)" = sorting_2020_lasso
+)
+
 coef_mapper <- c(
     "age" = "Age",
     "rep" = "Republican",
     "ind" = "Independent",
-    "male" = "Male",
+    "female" = "Female",
     "urban" = "Urban",
     "smalltown" = "Small town",
     "rural" = "Rural",
@@ -214,98 +209,107 @@ coef_mapper <- c(
     "know_scale" = "Political Knowledge",
     "news_fox" = "TV-Fox",
     "news_cnn" = "TV-MSNBC",
-    "news_msnbc" = "TV-CNN"
+    "news_msnbc" = "TV-CNN",
+    "facebook_tw" = "Facebook",
+    "facebook" = "Facebook",
+    "twitter" = "Twitter",
+    "snapchat" = "Snapchat",
+    "reddit" = "Reddit",
+    "tiktok" = "TikTok",
+    "sm_other" = "Other SM",
+    "youtube" = "YouTube",
+    "union" = "Union Membership",
+    "gun" = "Gun Ownership",
+    "children" = "Has Children"
   )
 
-modelsummary(list(
-  "2016 Sorting (alt)" = sorting_2016,
-  "2016 Sorting" = sorting_2016_alt,
-  "2020 Sorting (alt)" = sorting_2020,
-  "2020 Sorting" = sorting_2020_alt
-),
+
+modelsummary(models,
   coef_rename = coef_mapper,
   stars = TRUE,
-  output = "results/new_version/sorting_predictors.html",
-  fmt = 2
+  output = "results/new_version/a1.html",
+  fmt = 2,
+  return_zeros = TRUE,
+  notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
 
-predictors <- . ~ sorting_r + age + rep + ind + male + urban + smalltown +
-  rural + income + educ + ideo +  gay + bi +
-  RR + AUTH + religscale + bornagain + white + know_scale +
-  news_fox + news_cnn + news_msnbc
 
-f1 <- update.formula(predictors, dem1 ~ .)
-f2 <- update.formula(predictors, dem2 ~ .)
-f3 <- update.formula(predictors, dem3 ~ .)
-f4 <- update.formula(predictors, vio_justy ~ .)
-f5 <- update.formula(predictors, fairelec ~ .)
-f6 <- update.formula(predictors, comp1.1 ~ .)
-f7 <- update.formula(predictors, comp2.1 ~ .)
-f8 <- update.formula(predictors, MASONINDEX1 ~ .)
-f9 <- update.formula(predictors, ftdifference ~ .)
-m1 <- lm_robust(f1, data = anes20busby, weight = anes20busby$V200010b)
-m2 <- lm_robust(f2, data = anes20busby, weight = anes20busby$V200010b)
-m3 <- lm_robust(f3, data = anes20busby, weight = anes20busby$V200010b)
-m4 <- lm_robust(f4, data = anes20busby, weight = anes20busby$V200010b)
-m5 <- lm_robust(f5, data = anes20busby, weight = anes20busby$V200010b)
-m6 <- lm_robust(f6, data = anes20busby, weight = anes20busby$V200010b)
-m7 <- lm_robust(f7, data = anes20busby, weight = anes20busby$V200010b)
-m8 <- lm_robust(f8, data = anes20busby, weight = anes20busby$V200010b)
-m9 <- lm_robust(f9, data = anes20busby, weight = anes20busby$V200010b)
+# Tables A.2 and A.3 ---------------------------------------------------------------
 
+sorting_formula_minus_pid <- update.formula(sorting_formula, ~ . - rep - ind)
+sorting_formula_16_minus_pid <- update.formula(sorting_formula_16, ~ . - rep - ind)
 
+sorting_2020_rep <- lm_robust(sorting_formula_minus_pid,
+                              data = anes20_rep,
+                              weights = anes20_rep$weight)
+sorting_2020_rep_lasso <- lasso(sorting_formula_minus_pid,
+                              data = anes20_rep,
+                              weights = anes20_rep$weight)
 
-coef_mapper <- c(coef_mapper, "sorting_r" = "Sorting")
-modelsummary(list(
-  "Dissatisfaction with Democracy" = m1,
-  "Checks and balances aren't important" = m2,
-  "Helpful if president could act alone" = m3,
-  "Support for political violence" = m4,
-  "Skeptical of election integrity" = m5,
-  "Compromise is selling out" = m6,
-  "Prefer leader sticks to principles" = m7,
-  "Participation" = m8,
-  "Affective polarization" = m9
-  ),
+sorting_2020_ind <- lm_robust(sorting_formula_minus_pid,
+                              data = anes20_ind,
+                              weights = anes20_ind$weight)
+sorting_2020_ind_lasso <- lasso(sorting_formula_minus_pid,
+                              data = anes20_ind,
+                              weights = anes20_ind$weight)
+
+sorting_2020_dem <- lm_robust(sorting_formula_minus_pid,
+                              data = anes20_dem,
+                              weights = anes20_dem$weight)
+sorting_2020_dem_lasso <- lasso(sorting_formula_minus_pid,
+                              data = anes20_dem,
+                              weights = anes20_dem$weight)
+models <- list(
+  "Republicans (OLS)" = sorting_2020_rep,
+  "Republicans (LASSO)" = sorting_2020_rep_lasso,
+  "Independents (OLS)" = sorting_2020_ind,
+  "Independents (LASSO)" = sorting_2020_ind_lasso,
+  "Democrats (OLS)" = sorting_2020_dem,
+  "Democrats (LASSO)" = sorting_2020_dem_lasso
+)
+
+modelsummary(models,
   coef_rename = coef_mapper,
-  output = "results/new_version/dem_DVs_2020.html",
+  stars = TRUE,
+  output = "results/new_version/a2.html",
   fmt = 2,
-  stars = TRUE
-  )
+  return_zeros = TRUE
+)
 
-f1 <- update.formula(f1, ~ . - urban - rural - smalltown)
-f2 <- update.formula(f2, ~ . - urban - rural - smalltown)
-f3 <- update.formula(f3, ~ . - urban - rural - smalltown)
-f4 <- update.formula(f4, ~ . - urban - rural - smalltown)
-f5 <- update.formula(f5, ~ . - urban - rural - smalltown)
-f6 <- update.formula(f6, ~ . - urban - rural - smalltown)
-f7 <- update.formula(f7, ~ . - urban - rural - smalltown)
-f8 <- update.formula(f8, ~ . - urban - rural - smalltown)
-f9 <- update.formula(f9, ~ . - urban - rural - smalltown)
+sorting_2016_rep <- lm_robust(sorting_formula_16_minus_pid,
+                              data = anes16_rep,
+                              weights = anes16_rep$weight)
+sorting_2016_rep_lasso <- lasso(sorting_formula_16_minus_pid,
+                              data = anes16_rep,
+                              weights = anes16_rep$weight)
 
-m1 <- lm_robust(f1, data = anes16busby, weight = anes16busby$V160102)
-#m2 <- lm_robust(f2, data = anes16busby, weight = anes16busby$V160102)
-#m3 <- lm_robust(f3, data = anes16busby, weight = anes16busby$V160102)
-m4 <- lm_robust(f4, data = anes16busby, weight = anes16busby$V160102)
-m5 <- lm_robust(f5, data = anes16busby, weight = anes16busby$V160102)
-m6 <- lm_robust(f6, data = anes16busby, weight = anes16busby$V160102)
-m7 <- lm_robust(f7, data = anes16busby, weight = anes16busby$V160102)
-m8 <- lm_robust(f8, data = anes16busby, weight = anes16busby$V160102)
-m9 <- lm_robust(f9, data = anes16busby, weight = anes16busby$V160102)
+sorting_2016_ind <- lm_robust(sorting_formula_16_minus_pid,
+                              data = anes16_ind,
+                              weights = anes16_ind$weight)
+sorting_2016_ind_lasso <- lasso(sorting_formula_16_minus_pid,
+                              data = anes16_ind,
+                              weights = anes16_ind$weight)
 
-modelsummary(list(
-  "Dissatisfaction with Democracy" = m1,
-  #"Checks and balances aren't important" = m2,
-  #"Helpful if president could act alone" = m3,
-  "Support for political violence" = m4,
-  "Skeptical of election integrity" = m5,
-  "Compromise is selling out" = m6,
-  "Prefer leader sticks to principles" = m7,
-  "Participation" = m8,
-  "Affective polarization" = m9
-  ),
+sorting_2016_dem <- lm_robust(sorting_formula_16_minus_pid,
+                              data = anes16_dem,
+                              weights = anes16_dem$weight)
+sorting_2016_dem_lasso <- lasso(sorting_formula_16_minus_pid,
+                              data = anes16_dem,
+                              weights = anes16_dem$weight)
+models <- list(
+  "Republicans (OLS)" = sorting_2016,
+  "Republicans (LASSO)" = sorting_2016_rep_lasso,
+  "Independents (OLS)" = sorting_2016_ind,
+  "Independents (LASSO)" = sorting_2016_ind_lasso,
+  "Democrats (OLS)" = sorting_2016_dem,
+  "Democrats (LASSO)" = sorting_2016_dem_lasso
+)
+
+modelsummary(models,
   coef_rename = coef_mapper,
-  output = "results/new_version/dem_DVs_2016.html",
+  stars = TRUE,
+  output = "results/new_version/a3.html",
   fmt = 2,
-  stars = TRUE
-  )
+  return_zeros = TRUE,
+  notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
+)
