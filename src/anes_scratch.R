@@ -710,8 +710,24 @@ anes16 <- anes16 |>
     )) |> mutate_if(is_logical, as.numeric)
 
 
-panel <- inner_join(anes20, anes16, by = "panel_id")
+# ANES panel ----------------------------------------------------------------
+# NOTE: these variable names _are_ different (.x, .y is too confusing for me)
+
+panel <- inner_join(anes20, anes16, by = "panel_id", suffix=c("_2020", "_2016"))
 panel$panel <- as.numeric(panel$sample_type == 2)
+panel <- panel |> mutate(
+  ftdifference_change = ftdifference_2020 - ftdifference_2016,
+  MASONINDEX1_change = MASONINDEX1_2020 - MASONINDEX1_2016,
+  comp1.1_change = comp1.1_2020 - comp1.1_2016,
+  comp2.1_change = comp2.1_2020 - comp2.1_2016,
+  vio_justy_change = vio_justy_2020 - vio_justy_2016,
+  fairelec_change = fairelec_2020 - fairelec_2016,
+  demsat_change = demsat_2020 - demsat_2016,
+  sorting_r_change = sorting_r_2020 - sorting_r_2016,
+  AUTH_change = AUTH_2020 - AUTH_2016,
+  RR_change = RR_2020 - RR_2016
+)
+
 
 # Output ------------------------------------------------------------------
 
