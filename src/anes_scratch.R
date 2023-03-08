@@ -38,6 +38,8 @@ is_negative <- function(x) {
   return(x < 0)
 }
 
+# small subset of 2012 ANES used for Mason replications
+anes12 <- read_stata("data/anes_timeseries_2012.dta") |> zap_labels()
 anes16 <- read_stata("data/anes_timeseries_2016.dta") |> zap_labels()
 anes20 <- read_stata("data/anes_timeseries_2020_stata_20220210.dta") |> zap_labels()
 
@@ -727,6 +729,127 @@ panel <- panel |> mutate(
   AUTH_change = AUTH_2020 - AUTH_2016,
   RR_change = RR_2020 - RR_2016
 )
+
+
+# 2012 ANES ---------------------------------------------------------------
+
+anes12 <- anes12 |>
+  select(
+    id = caseid,
+    weight = weight_full,
+    strata = strata_full,
+    pid7 = pid_x,
+    ideo = libcpo_self, # NOTE: double-check. seems weird that PID is pre and ideo is post.
+    race = dem_raceeth_x,  # not split out into race/eth? other race questions are FTF only?
+    educ = dem_edu,
+    age = dem_age_r_x,
+    gender = gender_respondent_x,
+    # urban = dwell_block_urban,  # NOTE: this does not seem to be self-ID
+    # Mason policy index: abortion, government services versus spending,
+    # government health insurance, aid to minorities, employment protections,
+    # defense spending
+    abortion = abortpre_4point, # lib high
+    insurance = inspre_self, # con high
+    services = spsrvpr_ssself, # lib high
+    defense = defsppr_self, # lib low
+    employment = guarpr_self,  # con high
+    aid_minorities = aidblack_self, # con high
+    # TODO: align with attend_church_* for 2016/2020 ANES
+    attend_church_ever = relig_church,
+    FT_dem = ft_dem,
+    FT_rep = ft_rep,
+    state = sample_state,
+    know_senateterm = preknow_senterm,
+    know_spend = preknow_leastsp,
+    income = incgroup_prepost_x,
+    #know_house = V201646,
+    #know_senate = V201647,
+    anger_rep = candaff_angrpc,
+    anger_dem = candaff_angdpc,
+  ) |>
+  mutate_if(is.numeric, ~recode(., is_negative, NA_real_)) |>
+  mutate_at(vars(id:attend_church_ever), ~recode(., \(x) (x >= 90), NA_real_)) |>
+  mutate(
+    dem = pid7 %in% 1:3,
+    rep = pid7 %in% 5:7,
+    # NOTE: see discuss of coding of `ind` in anes20
+    ind = pid7 %in% c(4, 99),
+    pid7 = reverse_code(pid7),
+    ideo = reverse_code(ideo),
+    # NOTE: "Political South" not "Census South"
+    south = state %in% c("AL", "AR", "FL", "GA", "LA", "MS",
+                         "NC", "SC", "TN", "TX", "VA"),
+    white = race == 1,
+    black = race == 2,
+    asian = race == 3,
+    nativeamerican = race == 4,
+    hisp = race == 5,
+    #  urban = urban == 4,
+    male = gender == 1,
+    female = gender == 2,
+    attend_church_ever = reverse_code(attend_church_ever),
+    educ = case_when(
+      educ %in% 1:4 ~ 1,
+      educ %in% 5:8 ~ 2,
+      educ == 9 ~ 3,
+      educ %in% 10:12 ~ 5,
+      educ == 13 ~ 6,
+      educ %in% 14:16 ~ 7,
+      TRUE ~ NA_real_
+    ),
+    # reverse code issue positions to align
+    insurance = reverse_code(insurance),
+    defense = reverse_code(defense),
+    employment = reverse_code(employment),
+    aid_minorities = reverse_code(aid_minorities),
+    # create the strength indices, then rescale the policy variables
+    abortion_str = as.integer(abortion %in% c(1, 4)),
+    insurance_str = abs(insurance - 4) / 3,
+    services_str = abs(services - 4) / 3,
+    employment_str = abs(employment - 4) / 3,
+    aid_minorities_str = abs(aid_minorities - 4) / 3,
+    defense_str = abs(defense - 4) / 3,
+    abortion = abortion / max(abortion, na.rm = T),
+    insurance = insurance / max(insurance, na.rm = T),
+    defense = defense / max(defense, na.rm = T),
+    services = services / max(services, na.rm = T),
+    employment = employment / max(employment, na.rm = T),
+    aid_minorities = aid_minorities / max(aid_minorities, na.rm = T),
+    policyindex = pmap_dbl(list(abortion, insurance, services,
+                                defense, employment, aid_minorities),
+                           \(...) (mean(c(...), na.rm = TRUE))),
+    issue_strength = pmap_dbl(list(abortion_str, insurance_str, services_str,
+                                   aid_minorities_str, employment_str, defense_str),
+                              \(...) (mean(c(...), na.rm = TRUE))),
+    issue_constraint = pmap_dbl(list(abortion_str, insurance_str, services_str,
+                                   aid_minorities_str, employment_str, defense_str),
+                              \(...) (sd(c(...), na.rm = TRUE))),
+    pid7_str = abs(pid7 - 4) + 1,
+    ideo_str = abs(ideo - 4) + 1,
+    pidideostr1 = pid7_str * ideo_str,
+    overlap = abs(pid7 - ideo) + 1,
+    overlap_rr =  reverse_code(overlap),
+    overlapxstr = overlap_rr * pidideostr1,
+    sorting_r = (overlapxstr - 7) / 105,
+    # NOTE: ANES 2012 only has two of the knowledge measures we were using from
+    #       2016/2020. There are others we could draw on but for now we'll just
+    #       use those two.
+    know_senateterm = know_senateterm == 6,
+    know_spend = know_spend == 1,
+    know_scale = pmap_dbl(list(know_senateterm, know_spend),
+                          \(...) (mean(c(...), na.rm = TRUE))),
+    ftdifference = abs(FT_dem - FT_rep),
+    ftdifference_mason = ftdifference / 100,
+    pid7_str_mason = pid7_str / 4,
+    # anger_outpartisan = case_when(
+    #   dem == TRUE ~ anger_rep,
+    #   rep == TRUE ~ anger_dem,
+    #   TRUE ~ NA_integer_
+    # ),
+    anger_outpartisan = pmap_dbl(list(dem, rep, anger_dem, anger_rep),
+                                 \(d, r, ad, ar) case_when(d == TRUE ~ ar, r == TRUE ~ ad, TRUE ~ NA_integer_)),
+    anger_outpartisan = anger_outpartisan == 1
+  ) |> mutate_if(is_logical, as.numeric)
 
 
 # Output ------------------------------------------------------------------
