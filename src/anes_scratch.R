@@ -4,6 +4,9 @@
 ##
 ## I have tried to keep all variable names consistent between the two versions.
 
+
+# Preliminaries -----------------------------------------------------------
+
 library(tidyverse)
 library(haven)
 
@@ -39,12 +42,15 @@ anes16 <- read_stata("data/anes_timeseries_2016.dta") |> zap_labels()
 anes20 <- read_stata("data/anes_timeseries_2020_stata_20220210.dta") |> zap_labels()
 
 
+# 2020 ANES ---------------------------------------------------------------
+
 anes20 <- anes20 |>
   select(
     id = V200010c,
     panel_id = V160001_orig,
     strata = V200010d,
     weight = V200010a,
+    panel_weight = V200011a,
     pid7 = V201231x,
     ideo = V201200,
     gender = V201600,
@@ -206,7 +212,7 @@ anes20 <- anes20 |>
     asian = race == 4,
     nativeamerican = race == 5,
     multiracial = race == 6,
-    hisp = ethnicity == 4, # TODO: are these the right race/ethnicity codings?
+    hisp = race == 3, # TODO: are these the right race/ethnicity codings?
     union = union == 1,
     age_18 = age %in% 18:29,
     age_30 = age %in% 30:44,
@@ -275,11 +281,11 @@ anes20 <- anes20 |>
     nat5 = reverse_code(nat5),
     nat6 = reverse_code(nat6),
     NAT = pmap_dbl(list(nat1, nat2, nat3, nat4, nat5, nat6),
-                  \(...) (mean(c(..., na.rm = FALSE)))),
+                  \(...) (mean(c(...), na.rm = FALSE))),
     NAT2.1 = pmap_dbl(list(nat1, nat2, nat5, nat6),
-                  \(...) (mean(c(..., na.rm = FALSE)))),
+                  \(...) (mean(c(...), na.rm = FALSE))),
     NAT2.2 = pmap_dbl(list(nat3, nat4),
-                  \(...) (mean(c(..., na.rm = FALSE)))),
+                  \(...) (mean(c(...), na.rm = FALSE))),
     mortrad2 = reverse_code(mortrad2),
     fb_political = reverse_code(fb_political),
     tw_political = reverse_code(tw_political),
@@ -372,9 +378,10 @@ anes20 <- anes20 |>
     religscale = case_when(
       is.na(attend_church_ever) ~ NA_real_,
       attend_church_ever == 2 ~ 0,
-      attend_church_more == 2 ~ 1,
+      attend_church_more == 1 ~ 1,
       TRUE ~ reverse_code(attend_church) / 5
     ),
+    attend_church_ever = reverse_code(attend_church_ever),
     bornagain = bornagain == 1,
     dem1 = case_when(
       dem1 == 1 ~ 0,
@@ -391,6 +398,10 @@ anes20 <- anes20 |>
     # we wrote a bunch of these as pure boolean statements, but we
     # actually want 0/1s, so now recode all of those T/Fs at once
   ) |> mutate_if(is_logical, as.numeric)
+
+
+# 2016 ANES ---------------------------------------------------------------
+
 
 anes16 <- anes16 |>
   select(
@@ -543,10 +554,10 @@ anes16 <- anes16 |>
     female = gender == 2,
     white = race == 1,
     black = race == 2,
-    asian = race == 4,
-    nativeamerican = race == 5,
+    asian = race == 3,
+    nativeamerican = race == 4,
     multiracial = race == 6,
-    hisp = ethnicity == 4,
+    hisp = race == 5,
     union = union == 1,
     age_18 = age %in% 18:29,
     age_30 = age %in% 30:44,
@@ -610,11 +621,11 @@ anes16 <- anes16 |>
     nat5 = reverse_code(nat5),
     nat6 = reverse_code(nat6),
     NAT = pmap_dbl(list(nat1, nat3, nat4, nat5, nat6),
-                   \(...) (mean(c(..., na.rm = FALSE)))) ,
+                   \(...) (mean(c(...), na.rm = FALSE))),
     NAT2.1 = pmap_dbl(list(nat1, nat5, nat6),
-                      \(...) (mean(c(..., na.rm = FALSE)))) ,
+                      \(...) (mean(c(...), na.rm = FALSE))),
     NAT2.2 = pmap_dbl(list(nat3, nat4),
-                      \(...) (mean(c(..., na.rm = FALSE)))) ,
+                      \(...) (mean(c(...), na.rm = FALSE))),
     mortrad2 = reverse_code(mortrad2),
     news_fox = pmap_dbl(list(hannity, kelly, van_susteren, oreilly),
                         \(...) (max(c(0, ...), na.rm = TRUE))),
@@ -685,9 +696,10 @@ anes16 <- anes16 |>
     religscale = case_when(
       is.na(attend_church_ever) ~ NA_real_,
       attend_church_ever == 2 ~ 0,
-      attend_church_more == 2 ~ 1,
+      attend_church_more == 1 ~ 1,
       TRUE ~ reverse_code(attend_church) / 5
     ),
+    attend_church_ever = reverse_code(attend_church_ever),
     bornagain = bornagain == 1,
     dem1 = case_when(
       dem1 == 1 ~ 0,
@@ -700,6 +712,9 @@ anes16 <- anes16 |>
 
 panel <- inner_join(anes20, anes16, by = "panel_id")
 panel$panel <- as.numeric(panel$sample_type == 2)
+
+# Output ------------------------------------------------------------------
+
 
 # write out my updated version. this also contains the original data
 save.image("data/stefan_sorting_data.RData")
