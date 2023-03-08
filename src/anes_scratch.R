@@ -186,12 +186,19 @@ anes20 <- anes20 |>
     dem1 = V202440,
     dem2 = V201367,
     dem3 = V201372x,
+    abortion = V201336,
+    insurance = V201252,
+    services = V201246,
+    defense = V201249,
+    employment = V201255,
+    aid_minorities = V201258,
+    state = V203001,
     sample_type = V200003,
   ) |>
   # recode negative values and values greater than 90 to NA
   # this is OK to do for age, because age is capped at 80
-  mutate_at(vars(pid7:dem3), ~recode(., is_negative, NA_real_)) |>
-  mutate_at(vars(gender:dem3), ~recode(., \(x) (x >= 90), NA_real_))
+  mutate_at(vars(pid7:aid_minorities), ~recode(., is_negative, NA_real_)) |>
+  mutate_at(vars(gender:aid_minorities), ~recode(., \(x) (x >= 90), NA_real_))
 
 anes20 <- anes20 |>
   mutate(
@@ -376,6 +383,7 @@ anes20 <- anes20 |>
     # the regression models later on.
     # ftdifference = case_when(ind == 0 ~ abs(FT_dem - FT_rep), TRUE ~ NA_real),
     ftdifference = abs(FT_dem - FT_rep),
+    ftdifference_mason = ftdifference / 100,
     # NOTE: i need to think through what these values mean
     religscale = case_when(
       is.na(attend_church_ever) ~ NA_real_,
@@ -397,6 +405,41 @@ anes20 <- anes20 |>
     dem3 = round(dem3 / 7, 2),
     demsupport = pmap_dbl(list(dem1, dem2, dem3),
                           \(...) (mean(c(...), na.rm = FALSE))),
+    south = state %in% c("AL", "AR", "FL", "GA", "LA", "MS",
+                         "NC", "SC", "TN", "TX", "VA"),
+    # reverse code issue positions to align
+    insurance = reverse_code(insurance),
+    defense = reverse_code(defense),
+    employment = reverse_code(employment),
+    aid_minorities = reverse_code(aid_minorities),
+    # create the strength indices, then rescale the policy variables
+    abortion_str = as.integer(abortion %in% c(1, 4)),
+    insurance_str = abs(insurance - 4) / 3,
+    services_str = abs(services - 4) / 3,
+    employment_str = abs(employment - 4) / 3,
+    aid_minorities_str = abs(aid_minorities - 4) / 3,
+    defense_str = abs(defense - 4) / 3,
+    abortion = abortion / max(abortion, na.rm = T),
+    insurance = insurance / max(insurance, na.rm = T),
+    defense = defense / max(defense, na.rm = T),
+    services = services / max(services, na.rm = T),
+    employment = employment / max(employment, na.rm = T),
+    aid_minorities = aid_minorities / max(aid_minorities, na.rm = T),
+    policyindex = pmap_dbl(list(abortion, insurance, services,
+                                defense, employment, aid_minorities),
+                           \(...) (mean(c(...), na.rm = TRUE))),
+    issue_strength = pmap_dbl(list(abortion_str, insurance_str, services_str,
+                                   aid_minorities_str, employment_str, defense_str),
+                              \(...) (mean(c(...), na.rm = TRUE))),
+    issue_constraint = pmap_dbl(list(abortion_str, insurance_str, services_str,
+                                     aid_minorities_str, employment_str, defense_str),
+                                \(...) (sd(c(...), na.rm = TRUE))),
+    # policyindex = (abortion / 4 + reverse_code(insurance) / 7 +
+    #               services / 7 + reverse_code(defense) / 7 +
+    #               reverse_code(defense) / 7 + reverse_code(aid_minorities) / 7) / 6,
+    # Mason replication models want PID reverse coded
+    pid7_mason = reverse_code(pid7) / 7,
+    pid7_str_mason = pid7_str / 4,
     # we wrote a bunch of these as pure boolean statements, but we
     # actually want 0/1s, so now recode all of those T/Fs at once
   ) |> mutate_if(is_logical, as.numeric)
@@ -535,11 +578,21 @@ anes16 <- anes16 |>
     attend_church = V161245,
     attend_church_more = V161245a,
     bornagain = V161263,
-    dem1 = V162290
+    dem1 = V162290,
+    abortion = V161232,
+    insurance = V161184,
+    services = V161178,
+    defense = V161181,
+    employment = V161189,
+    aid_minorities = V161198,
+    state = V161010e,
+    # NOTE: coded differently in 2016 than other years, absent in 2020
+    anger_dem = V161116,
+    anger_rep = V161121,
   ) |>
-  mutate_at(vars(pid7:dem1), ~recode(., is_negative, NA_real_)) |>
+  mutate_at(vars(pid7:aid_minorities), ~recode(., is_negative, NA_real_)) |>
   # NOTE: this is not being applied to pid7 or ideo
-  mutate_at(vars(gender:dem1), ~recode(., \(x) (x >= 90), NA_real_))
+  mutate_at(vars(gender:aid_minorities), ~recode(., \(x) (x >= 90), NA_real_))
 
 
 anes16 <- anes16 |>
@@ -646,6 +699,7 @@ anes16 <- anes16 |>
                                know_house, know_senate),
                           \(...) (mean(c(...), na.rm = TRUE))),
     pid7_str = abs(pid7 - 4) + 1,
+    pid7_str_mason = pid7_str / 4,
     ideo_str = abs(ideo - 4) + 1,
     pidideostr1 = pid7_str * ideo_str,
     overlap = abs(pid7 - ideo) + 1,
@@ -695,6 +749,7 @@ anes16 <- anes16 |>
                            \(...) (mean(c(...), na.rm = FALSE))),
     # NOTE: see discussion of variable change in anes20
     ftdifference = abs(FT_dem - FT_rep),
+    ftdifference = ftdifference / 100,
     religscale = case_when(
       is.na(attend_church_ever) ~ NA_real_,
       attend_church_ever == 2 ~ 0,
@@ -709,7 +764,45 @@ anes16 <- anes16 |>
       dem1 == 4 ~ 0.666,
       dem1 == 5 ~ 1,
       TRUE ~ NA_real_,
-    )) |> mutate_if(is_logical, as.numeric)
+    ),
+    south = state %in% c("AL", "AR", "FL", "GA", "LA", "MS",
+                         "NC", "SC", "TN", "TX", "VA"),
+    # policyindex = (abortion / 4 + reverse_code(insurance) / 7 +
+    #               services / 7 + reverse_code(defense) / 7 +
+    #               reverse_code(defense) / 7 + reverse_code(aid_minorities) / 7) / 6,
+    # reverse code issue positions to align
+    insurance = reverse_code(insurance),
+    defense = reverse_code(defense),
+    employment = reverse_code(employment),
+    aid_minorities = reverse_code(aid_minorities),
+    # create the strength indices, then rescale the policy variables
+    abortion_str = as.integer(abortion %in% c(1, 4)),
+    insurance_str = abs(insurance - 4) / 3,
+    services_str = abs(services - 4) / 3,
+    employment_str = abs(employment - 4) / 3,
+    aid_minorities_str = abs(aid_minorities - 4) / 3,
+    defense_str = abs(defense - 4) / 3,
+    abortion = abortion / max(abortion, na.rm = T),
+    insurance = insurance / max(insurance, na.rm = T),
+    defense = defense / max(defense, na.rm = T),
+    services = services / max(services, na.rm = T),
+    employment = employment / max(employment, na.rm = T),
+    aid_minorities = aid_minorities / max(aid_minorities, na.rm = T),
+    policyindex = pmap_dbl(list(abortion, insurance, services,
+                                defense, employment, aid_minorities),
+                           \(...) (mean(c(...), na.rm = TRUE))),
+    issue_strength = pmap_dbl(list(abortion_str, insurance_str, services_str,
+                                   aid_minorities_str, employment_str, defense_str),
+                              \(...) (mean(c(...), na.rm = TRUE))),
+    issue_constraint = pmap_dbl(list(abortion_str, insurance_str, services_str,
+                                     aid_minorities_str, employment_str, defense_str),
+                                \(...) (sd(c(...), na.rm = TRUE))),
+    # Mason replication models want PID reverse coded
+    pid7 = reverse_code(pid7),
+    anger_outpartisan = pmap_dbl(list(dem, rep, anger_dem, anger_rep),
+                                 \(d, r, ad, ar) case_when(d == TRUE ~ ar, r == TRUE ~ ad, TRUE ~ NA_integer_)),
+    #anger_outpartisan = anger_outpartisan == 1
+    ) |> mutate_if(is_logical, as.numeric)
 
 
 # ANES panel ----------------------------------------------------------------
