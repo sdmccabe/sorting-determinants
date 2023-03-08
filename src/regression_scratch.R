@@ -8,10 +8,15 @@ library(glmnetUtils)
 library(modelsummary)
 library(tidymodels)
 
-#options("modelsummary_format_numeric_latex" = "plain")
+# override modelsummary's default goodness-of-fit statistics to
+# show LASSO pseudo-R2
+GOF_MAP <- rbind(modelsummary::gof_map, 
+  data.frame(raw = c('dev.ratio'), 
+             clean = c("McFadden pseudo-R2"), 
+             fmt = c(3),
+             omit = c(FALSE)))
 
-GOF_MAP <-rbind(modelsummary::gof_map, data.frame(raw=c('dev.ratio'), clean=c("McFadden pseudo-R2"), fmt=c(3), omit=c(FALSE)))
-
+# all variables displayed in any tables should be named here
 COEF_RENAMER <- c(
   "(Intercept)" = "Intercept",
   "sorting_r" = "Sorting",
@@ -64,13 +69,10 @@ COEF_RENAMER <- c(
 )
 
 
-
-
 # Functions ---------------------------------------------------------------
 
 # This is a wrapper function for doing LASSO with defaults for cross-validation
 lasso <- function(f, data, weights) {
-  #mask <- subset(data, select = c(attr(terms(f), "term.labels"))) |>
   mask <- subset(data, select = rownames(attr(terms(f), "factors"))) |>
     complete.cases()
   masked_data <- data[mask, ]
@@ -107,6 +109,7 @@ tidy_custom.glmnet <- function(x, ...) {
   return(out)
 }
 
+# Show only N and dev.ratio (renamed to pseudo-R2 above) in LASSO
 glance_custom.glmnet <- function(x, ...) {
   out <- data.frame(nobs = stats::nobs(x),
                     dev.ratio = x$dev.ratio)
@@ -136,21 +139,24 @@ models_to_table <- function(
   notes = NULL,
   title = NULL
   ) {
-    res <- lapply(spec,
+
+  res <- lapply(spec,
     \(x) x$fun(x$formula, data = x$data, weights = x$data$weight))
 
-  out_format <- str_split(output, "\\.", simplify = T)[-1]
+  # If the output is a latex table, we want to use some styling
+  # from kableExtra 
+  # NOTE: the kableExtra styling is using an outdated package, `tabu`.
+  # to make it play nice, you need to load an outdated version of `longtable`:
+  # \usepackage{longtable}[=v4.13]
+  out_format <- stringr::str_split(output, "\\.", simplify = T)[-1]
   out_type <- case_when(out_format == "tex" ~ "latex",
                         out_format == "html" ~ "html",
                         TRUE ~ NA_character_)
 
   k <- modelsummary(
     res,
-    #output = output,
     output = out_type,
     coef_rename = COEF_RENAMER,
-    # statistic = statistic,
-    # estimate = estimate,
     stars = stars,
     fmt = fmt,
     return_zeros = return_zeros,
@@ -161,7 +167,7 @@ models_to_table <- function(
     )
   if(out_type == "latex") {
     k <- k |>
-      kableExtra::kable_styling(full_width=TRUE)
+      kableExtra::kable_styling(full_width = TRUE)
   }
   kableExtra::save_kable(k, output)
 }
@@ -272,14 +278,6 @@ spec <- list(
     formula = update.formula(sorting_plus_controls_16, dem1 ~ .),
     data = anes16,
     fun = lm_robust),
-  # "Checks and balances aren't important" = list(
-  #   formula = update.formula(sorting_plus_controls_16, dem2 ~ .),
-  #   data = anes16,
-  #   fun = lm_robust),
-  # "Helpful if president could act alone" = list(
-  #   formula = update.formula(sorting_plus_controls_16, dem3 ~ .),
-  #   data = anes16,
-  #   fun = lm_robust),
   "Support for political violence" = list(
     formula = update.formula(sorting_plus_controls_16, vio_justy ~ .),
     data = anes16,
@@ -879,7 +877,7 @@ models_to_table(spec,
 # Mason A.1 ---------------------------------------------------------------
 
 # NOTE: this differs from Mason in two major ways:
-# 1. missing value handling decisions
+# 1. missing value coding decisions. Her Stata code is often recoding NAs to 0.
 # 2. `urban` is excluded from the model. 2012 and 2016 have dwell_block_urban
 #    as an administrative variable in FTF respondents only; 2020 has
 #    urban/rural ID. (and there aren't a lot of FTFs in 2016). So the variable
