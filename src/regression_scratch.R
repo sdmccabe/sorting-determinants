@@ -1003,3 +1003,43 @@ spec = list(
 models_to_table(spec,
                 output = "results/new_version/mason_a4.tex",
                 title = "Replication of Mason (2018) Table A.4")
+
+
+spec <- list(
+  "2016 (I)" = list(
+    formula = update.formula(sorting_plus_controls_16, ftdifference ~ .),
+    data = anes16,
+    fun = lm_robust
+  ),
+  "2016 (II)" = list(
+    formula = mason_formula_a4,
+    data = anes16,
+    fun = lm_robust
+  ),
+  "2020 (I)" = list(
+    formula = update.formula(sorting_plus_controls, ftdifference ~ .),
+    data = anes20,
+    fun = lm_robust
+  ),
+  "2020 (II)" = list(
+    formula = mason_formula_a4,
+    data = anes20,
+    fun = lm_robust
+  )
+)
+
+models_to_table(spec,
+                output = "results/new_version/mason_replication.tex",
+                title = "Comparison to Mason (2018) affective polarization model (OLS)",
+                notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.",
+                             "Coefficients may differ from originating tables due to differences in pre-processing.")
+                )
+
+# replace OLS with lasso_new for alternate table
+spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
+models_to_table(spec,
+                output="results/new_version/mason_replication_lasso_new.tex",
+                title="Comparison to Mason (2018) affective polarization model (LASSO)")
+
+
+
