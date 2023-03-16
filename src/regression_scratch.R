@@ -10,9 +10,9 @@ library(tidymodels)
 
 # override modelsummary's default goodness-of-fit statistics to
 # show LASSO pseudo-R2
-GOF_MAP <- rbind(modelsummary::gof_map, 
-  data.frame(raw = c('dev.ratio'), 
-             clean = c("McFadden pseudo-R2"), 
+GOF_MAP <- rbind(modelsummary::gof_map,
+  data.frame(raw = c('dev.ratio'),
+             clean = c("McFadden pseudo-R2"),
              fmt = c(3),
              omit = c(FALSE)))
 
@@ -157,7 +157,7 @@ models_to_table <- function(
     \(x) x$fun(x$formula, data = x$data, weights = x$data$weight))
 
   # If the output is a latex table, we want to use some styling
-  # from kableExtra 
+  # from kableExtra
   # NOTE: the kableExtra styling is using an outdated package, `tabu`.
   # to make it play nice, you need to load an outdated version of `longtable`:
   # \usepackage{longtable}[=v4.13]
@@ -225,8 +225,8 @@ default_controls <- . ~ female + age + rep + ind + urban + smalltown +
   issue_strength:issue_constraint + pid7_str
 
 default_controls_16 <- update.formula(default_controls, ~ . -
-  urban - smalltown - rural - facebook - twitter - instagram - reddit -
-  snapchat - tiktok - sm_other - youtube + facebook_tw)
+                                        urban - smalltown - rural - facebook - twitter - instagram - reddit -
+                                        snapchat - tiktok - sm_other - youtube + facebook_tw)
 
 # others are going to study PID subsets, and therefore need to drop PID
 sorting_plus_controls_minus_pid <- update.formula(sorting_plus_controls, ~ . - rep - ind - pid7_str)
@@ -1043,3 +1043,231 @@ models_to_table(spec,
 
 
 
+# Plots -------------------------------------------------------------------
+
+m1 <- lm_robust(sorting_formula_16, data=anes16, weights = anes16$weight) |> tidy() |> mutate(model="All")
+m2 <- lm_robust(sorting_formula_16_minus_pid, data=anes16_dem, weights = anes16_dem$weight) |> tidy() |> mutate(model="Democrats")
+m3 <- lm_robust(sorting_formula_16_minus_pid, data=anes16_ind, weights = anes16_ind$weight) |> tidy() |> mutate(model="Independents")
+m4 <- lm_robust(sorting_formula_16_minus_pid, data=anes16_rep, weights = anes16_rep$weight) |> tidy() |> mutate(model="Republicans")
+
+
+t1 <- bind_rows(m1, m2, m3, m4) |> tibble () |>
+  mutate(term = as.factor(term) |> fct_relabel(~COEFRENAMER[.x]) |> fct_relevel(COEFRENAMER) |> fct_rev(),
+  star = as.integer(p.value < 0.05)) |>
+  mutate(hypothesis = case_when(term == "Female" ~ "Gender",
+                                term == "White" ~ "Race",
+                                term %in% c("TV-CNN", "TV-MSNBC", "TV-Fox") ~ "Media",
+                                term %in% c("Republican", "Independent") ~ "Party",
+                                TRUE ~ NA_character_))
+
+
+caption <- "Plot shows estimated relationship with sorting, where 0 indicates perfectly unsorted and 1 indicates perfectly sorted.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
+p1 <- ggplot(filter(t1, term!="Intercept"), aes(x=term, alpha = star, color=hypothesis)) +
+  geom_point(aes(y = estimate), size=2) +
+  geom_linerange(aes(ymin=conf.low, ymax=conf.high)) +
+  coord_flip(ylim = c(-0.2, 0.2)) +
+  geom_hline(yintercept=0, linetype="dashed") +
+  theme_bw() +
+  labs(x="Term",
+       y="Coefficient",
+       title="Predictors of party-ideology sorting, 2016 ANES",
+       caption = caption,
+       color = "Hypothesis") +
+  guides(alpha="none") +
+  scale_alpha_continuous(range = c(0.25, 1)) +
+  scale_color_brewer(type = "qual", palette = 6, na.value="gray50") +
+  facet_wrap(vars(model), nrow = 1) +
+  theme(text = element_text(size=16),
+        plot.caption = element_text(size=12))
+ggsave("results/new_version/fig1.png", plot=p1, dpi=400, width=16, height=9, units="in")
+
+m1 <- lm_robust(sorting_formula, data=anes20, weights = anes20$weight)  |> tidy() |> mutate(model="All")
+m2 <- lm_robust(sorting_formula_minus_pid, data=anes20_dem, weights = anes20_dem$weight) |> tidy() |> mutate(model="Democrats")
+m3 <- lm_robust(sorting_formula_minus_pid, data=anes20_ind, weights = anes20_ind$weight) |> tidy() |> mutate(model="Independents")
+m4 <- lm_robust(sorting_formula_minus_pid, data=anes20_rep, weights = anes20_rep$weight) |> tidy() |> mutate(model="Republicans")
+
+
+t2 <- bind_rows(m1, m2, m3, m4) |> tibble()|>
+  mutate(term = as.factor(term) |> fct_relabel(~COEFRENAMER[.x]) |> fct_relevel(COEFRENAMER) |> fct_rev(),
+  star = as.integer(p.value < 0.05)) |>
+  mutate(hypothesis = case_when(term == "Female" ~ "Gender",
+                                term == "White" ~ "Race",
+                                term %in% c("TV-CNN", "TV-MSNBC", "TV-Fox") ~ "Media",
+                                term %in% c("Republican", "Independent") ~ "Party",
+                                TRUE ~ NA_character_))
+
+
+p2 <- ggplot(filter(t2, term!="Intercept"), aes(x=term, color=hypothesis)) +
+  geom_point(aes(y = estimate, alpha = star)) +
+  geom_linerange(aes(ymin=conf.low, ymax=conf.high, alpha=star)) +
+  coord_flip(ylim = c(-0.2, 0.2)) +
+  geom_hline(yintercept=0, linetype="dashed") +
+  theme_bw() +
+  labs(x="Term",
+       y="Coefficient",
+       title="Predictors of party-ideology sorting, 2020 ANES",
+       caption = caption) +
+  guides(alpha="none") +
+  scale_alpha_continuous(range = c(0.25, 1)) +
+  scale_color_brewer(type = "qual", palette = 6, na.value="gray50") +
+  facet_wrap(vars(model), nrow = 1) +
+  theme(text = element_text(size=16),
+        plot.caption = element_text(size=12))
+
+ggsave("results/new_version/fig2.png", plot = p2, dpi=400, width=16, height=9, units="in")
+
+
+spec <- list(
+  "Dissatisfaction with democracy" = list(
+    formula = update.formula(sorting_plus_controls, dem1 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Checks and balances aren't important" = list(
+    formula = update.formula(sorting_plus_controls, dem2 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Helpful if president could act alone" = list(
+    formula = update.formula(sorting_plus_controls, dem3 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Support for political violence" = list(
+    formula = update.formula(sorting_plus_controls, vio_justy ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Skeptical of election integrity" = list(
+    formula = update.formula(sorting_plus_controls, fairelec ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Compromise is selling out" = list(
+    formula = update.formula(sorting_plus_controls, comp1.1 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Prefer leader sticks to principles" = list(
+    formula = update.formula(sorting_plus_controls, comp2.1 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Participation" = list(
+    formula = update.formula(sorting_plus_controls, MASONINDEX1 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Affective polarization" = list(
+    formula = update.formula(sorting_plus_controls, ftdifference ~ .),
+    data = anes20 |> mutate(ftdifference = ftdifference/100),
+    fun = lm_robust)
+)
+
+r <- lapply(spec,
+  \(x) (x$fun(x$formula, data=x$data, weights=x$data$weight) |>
+          tidy() |>
+          tibble() |>
+          filter(term == "sorting_r"))) |>
+  bind_rows() |>
+  mutate(outcome = as.factor(outcome) |>
+           fct_relabel(~COEFRENAMER[.x]) |>
+           fct_relevel(COEFRENAMER) |>
+           fct_rev())
+# TODO: don't hard-code these
+r$hypothesis <- c(rep("Democratic Norms", 7), rep("Emotion", 2))
+
+caption <- "Plot shows estimated relationship with sorting for each DV.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
+p3 <- ggplot(r, aes(x=outcome, y=estimate, ymin=conf.low, color=hypothesis,
+                    ymax=conf.high, alpha = if_else(p.value < 0.05, 1, 0))) +
+  geom_point(size=4) +
+  geom_linerange(linewidth=1.5) +
+  coord_flip() +
+  theme_bw() +
+  scale_alpha_continuous(range=c(0.25, 1),
+                         guide="none") +
+  geom_hline(yintercept=0, linetype="dashed") +
+  scale_color_brewer(type="qual", palette=6) +
+  labs(
+    y="Coefficient",
+    x="Outcome",
+    title="Outcomes predicted by party-ideology sorting, 2020 ANES",
+    color="Hypotheses",
+    caption=caption
+  ) +
+  theme(text = element_text(size=16),
+        plot.caption = element_text(size=12))
+ggsave("results/new_version/fig3.png", plot = p3, dpi=400, width=16, height=9, units="in")
+
+
+spec <- list(
+  "Dissatisfaction with democracy" = list(
+    formula = update.formula(sorting_plus_controls_16, dem1 ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Support for political violence" = list(
+    formula = update.formula(sorting_plus_controls_16, vio_justy ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Skeptical of election integrity" = list(
+    formula = update.formula(sorting_plus_controls_16, fairelec ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Compromise is selling out" = list(
+    formula = update.formula(sorting_plus_controls_16, comp1.1 ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Prefer leader sticks to principles" = list(
+    formula = update.formula(sorting_plus_controls_16, comp2.1 ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Participation" = list(
+    formula = update.formula(sorting_plus_controls_16, MASONINDEX1 ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Affective polarization" = list(
+    formula = update.formula(sorting_plus_controls_16, ftdifference ~ .),
+    data = anes16 |> mutate(ftdifference = ftdifference/100),
+    fun = lm_robust)
+)
+r <- lapply(spec,
+            \(x) (x$fun(x$formula, data=x$data, weights=x$data$weight) |>
+                    tidy() |>
+                    tibble() |>
+                    filter(term == "sorting_r"))) |>
+  bind_rows() |>
+  mutate(outcome = as.factor(outcome) |>
+           fct_relabel(~COEFRENAMER[.x]) |>
+           fct_relevel(COEFRENAMER) |>
+           fct_rev())
+# TODO: don't hard-code these
+r$hypothesis <- c(rep("Democratic Norms", 5), rep("Emotion", 2))
+
+p4 <- ggplot(r, aes(x=outcome, y=estimate, color = hypothesis,
+                    ymin=conf.low, ymax=conf.high, alpha = if_else(p.value < 0.05, 1, 0))) +
+  geom_point(size=4) +
+  geom_linerange(linewidth=1.5) +
+  coord_flip() +
+  theme_bw() +
+  scale_alpha_continuous(range=c(0.25, 1),
+                         guide="none") +
+  scale_color_brewer(type="qual", palette=6) +
+  geom_hline(yintercept=0, linetype="dashed") +
+  labs(
+    y="Coefficient",
+    x="Outcome",
+    title="Outcomes predicted by party-ideology sorting, 2016 ANES",
+    color="Hypotheses",
+    caption= caption
+  ) +
+  theme(text = element_text(size=16),
+        plot.caption = element_text(size=12))
+ggsave("results/new_version/fig4.png", plot = p4, dpi=400, width=16, height=9, units="in")
+
+p5 <- bind_rows(
+  select(anes20, sorting_r) |>
+                  mutate(year=2020),
+  select(anes16, sorting_r) |>
+                  mutate(year=2016),
+  select(anes12, sorting_r) |>
+                  mutate(year=2012)) |>
+  ggplot(aes(x=sorting_r)) +
+  geom_histogram(binwidth=0.05) +
+  facet_wrap(vars(year), ncol=1, scales="free") +
+  theme_bw() +
+  labs(x="Sorting (lower is more sorted)",
+       y="Count", title="Distribution of partisan-ideological sorting, 2012-2020",
+       caption="Distributions are sourced from each year's respective ANES.")
+ggsave("results/new_version/fig5.png", plot = p5, dpi=400, width=12, height=9, units="in")
