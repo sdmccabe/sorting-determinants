@@ -749,7 +749,7 @@ anes16 <- anes16 |>
                            \(...) (mean(c(...), na.rm = FALSE))),
     # NOTE: see discussion of variable change in anes20
     ftdifference = abs(FT_dem - FT_rep),
-    ftdifference = ftdifference / 100,
+    ftdifference_mason = ftdifference / 100,
     religscale = case_when(
       is.na(attend_church_ever) ~ NA_real_,
       attend_church_ever == 2 ~ 0,
@@ -867,7 +867,7 @@ anes12 <- anes12 |>
     rep = pid7 %in% 5:7,
     # NOTE: see discuss of coding of `ind` in anes20
     ind = pid7 %in% c(4, 99),
-    pid7 = reverse_code(pid7),
+    # pid7 = reverse_code(pid7),
     ideo = reverse_code(ideo),
     # NOTE: "Political South" not "Census South"
     south = state %in% c("AL", "AR", "FL", "GA", "LA", "MS",
