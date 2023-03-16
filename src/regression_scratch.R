@@ -17,7 +17,7 @@ GOF_MAP <- rbind(modelsummary::gof_map,
              omit = c(FALSE)))
 
 # all variables displayed in any tables should be named here
-COEF_RENAMER <- c(
+COEFRENAMER <- c(
   "(Intercept)" = "Intercept",
   "sorting_r" = "Sorting",
   "age" = "Age",
@@ -65,32 +65,45 @@ COEF_RENAMER <- c(
   "issue_strength" = "Issue Strength",
   "issue_constraint" = "Issue Constraint",
   "issue_strength:issue_constraint" = "Strength x Constraint",
-  "pid7_str" = "Partisan ID Strength"
+  "pid7_str" = "Partisan ID Strength",
+  "dem1" = "Dissatisfaction with democracy",
+  "dem2" = "Checks and balances aren't important",
+  "dem3" = "Helpful if president could act alone",
+  "vio_justy" = "Support for political violence",
+  "fairelec" = "Skeptical of election integrity",
+  "comp1.1" = "Compromise is selling out",
+  "comp2.1" = "Prefer leader sticks to principles",
+  "MASONINDEX1" = "Participation",
+  "ftdifference" = "Affective polarization"
 )
+
 
 
 # Functions ---------------------------------------------------------------
 
 # This is a wrapper function for doing LASSO with defaults for cross-validation
-lasso <- function(f, data, weights) {
-  mask <- subset(data, select = rownames(attr(terms(f), "factors"))) |>
+lasso_new <- function(f, data, weights) {
+  mask <<- subset(data, select = rownames(attr(terms(f), "factors"))) |>
     complete.cases()
-  masked_data <- data[mask, ]
+  masked_data <<- data[mask, ]
   # NOTE: this is assigning globally, but I wasn't able to get it working
   # with normal scoping for reasons I couldn't really process.
   masked_w <<- weights[mask]
 
   assertthat::are_equal(dim(masked_data)[1], length(masked_w))
 
-  mat <- model.frame(formula = f, data = masked_data, weights = masked_w)
-  y <- mat[, 1]
-  x <- mat[, 2:(dim(mat)[2] - 1)] |> as.matrix()
-  w <- mat[, dim(mat)[2]]
+  mat <<- model.frame(formula = f, data = masked_data, weights = masked_w)
+  y <<- mat[, 1]
+  w <<- mat[, dim(mat)[2]]
+  x <<- model.matrix(object = f, data = masked_data, weights = masked_w)
+  x <<- x[, 2:ncol(x)]
+  #x <- mat[, 2:(dim(mat)[2] - 1)] |> as.matrix()
+  #w <- mat[, dim(mat)[2]]
 
-  lasso_cv <- cv.glmnet(y = y, x = x, weights = w)
+  lasso_new_cv <<- cv.glmnet(y = y, x = x, weights = w)
 
-  lambda <- lasso_cv$lambda.min
-  out <- glmnet(y = y, x = x, lambda = lambda, alpha = 1)
+  lambda <<- lasso_new_cv$lambda.min
+  out <<- glmnet(y = y, x = x, lambda = lambda, alpha = 1)
 
   return(out)
 }
@@ -156,7 +169,7 @@ models_to_table <- function(
   k <- modelsummary(
     res,
     output = out_type,
-    coef_rename = COEF_RENAMER,
+    coef_rename = COEFRENAMER,
     stars = stars,
     fmt = fmt,
     return_zeros = return_zeros,
@@ -196,7 +209,8 @@ sorting_plus_controls <- . ~ sorting_r + age + rep + ind + male + urban + smallt
   rural + income + educ + ideo + union + gun + married + gay + bi +
   children + RR + AUTH + religscale + bornagain + white + know_scale +
   news_fox + news_cnn + news_msnbc + facebook + twitter + instagram + reddit +
-  youtube + snapchat + tiktok + sm_other
+  youtube + snapchat + tiktok + sm_other + issue_strength +issue_constraint +
+  issue_strength:issue_constraint + pid7_str
 
 sorting_plus_controls_16 <- update.formula(sorting_plus_controls, ~ . -
   urban - smalltown - rural - facebook - twitter - instagram - reddit -
@@ -207,17 +221,18 @@ default_controls <- . ~ female + age + rep + ind + urban + smalltown +
   rural + income + educ + ideo + union + gun + gay + bi +  children + RR +
   AUTH + religscale + bornagain + white + facebook + twitter + instagram +
   reddit + youtube + snapchat + tiktok + sm_other + news_msnbc + news_cnn +
-  news_fox + know_scale
+  news_fox + know_scale + issue_strength + issue_constraint +
+  issue_strength:issue_constraint + pid7_str
 
 default_controls_16 <- update.formula(default_controls, ~ . -
   urban - smalltown - rural - facebook - twitter - instagram - reddit -
   snapchat - tiktok - sm_other - youtube + facebook_tw)
 
 # others are going to study PID subsets, and therefore need to drop PID
-sorting_plus_controls_minus_pid <- update.formula(sorting_plus_controls, ~ . - rep - ind)
-sorting_plus_controls_16_minus_pid <- update.formula(sorting_plus_controls_16, ~ . - rep - ind)
-default_controls_minus_pid <- update.formula(default_controls, ~ . - rep - ind)
-default_controls_16_minus_pid <- update.formula(default_controls, ~ . - rep - ind)
+sorting_plus_controls_minus_pid <- update.formula(sorting_plus_controls, ~ . - rep - ind - pid7_str)
+sorting_plus_controls_16_minus_pid <- update.formula(sorting_plus_controls_16, ~ . - rep - ind - pid7_str)
+default_controls_minus_pid <- update.formula(default_controls, ~ . - rep - ind - pid7_str)
+default_controls_16_minus_pid <- update.formula(default_controls, ~ . - rep - ind - pid7_str)
 
 # Table A.4 -----------------------------------------------------------------
 
@@ -267,10 +282,10 @@ models_to_table(spec,
                 output="results/new_version/a4.tex",
                 title="Effects of sorting, models behind Figure 4 (2020) (OLS)")
 
-# replace OLS with lasso for alternate table
-spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso)))
+# replace OLS with lasso_new for alternate table
+spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
 models_to_table(spec,
-                output="results/new_version/a4_lasso.tex",
+                output="results/new_version/a4_lasso_new.tex",
                 title="Effects of sorting, models behind Figure 4 (2020) (LASSO)")
 
 spec <- list(
@@ -308,10 +323,10 @@ models_to_table(spec,
                 output="results/new_version/a4_16.tex",
                 title="Effects of sorting, models behind Figure 4 (2016) (OLS)")
 
-# replace OLS with lasso for alternate table
-spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso)))
+# replace OLS with lasso_new for alternate table
+spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
 models_to_table(spec,
-                output="results/new_version/a4_lasso_16.tex",
+                output="results/new_version/a4_lasso_new_16.tex",
                 title="Effects of sorting, models behind Figure 4 (2016) (LASSO)")
 
 # Table A.1 ----------------------------------------------------------------
@@ -325,29 +340,29 @@ spec <- list(
                               fun = lm_robust),
   "2016 Sorting (LASSO)" = list(formula = sorting_formula_16,
                               data = anes16,
-                              fun = lasso),
+                              fun = lasso_new),
   "2020 Sorting (OLS)" = list(formula = sorting_formula,
                               data = anes20,
                               fun = lm_robust),
   "2020 Sorting (LASSO)" = list(formula = sorting_formula,
                               data = anes20,
-                              fun = lasso)
+                              fun = lasso_new)
 )
 models_to_table(spec, output="results/new_version/a1.tex",
                 title = "Detailed results predicting sorting, whole sample")
 
 # Tables A.2 and A.3 ---------------------------------------------------------------
 
-sorting_formula_minus_pid <- update.formula(sorting_formula, ~ . - rep - ind)
-sorting_formula_16_minus_pid <- update.formula(sorting_formula_16, ~ . - rep - ind)
+sorting_formula_minus_pid <- update.formula(sorting_formula, ~ . - rep - ind - pid7_str)
+sorting_formula_16_minus_pid <- update.formula(sorting_formula_16, ~ . - rep - ind - pid7_str)
 
 spec <- list(
   "Republicans (OLS)" = list(formula = sorting_formula_minus_pid, data=anes20_rep, fun = lm_robust),
-  "Republicans (LASSO)" = list(formula = sorting_formula_minus_pid, data=anes20_rep, fun = lasso),
+  "Republicans (LASSO)" = list(formula = sorting_formula_minus_pid, data=anes20_rep, fun = lasso_new),
   "Independents (OLS)" = list(formula = sorting_formula_minus_pid, data=anes20_ind, fun = lm_robust),
-  "Independents (LASSO)" = list(formula = sorting_formula_minus_pid, data=anes20_ind, fun = lasso),
+  "Independents (LASSO)" = list(formula = sorting_formula_minus_pid, data=anes20_ind, fun = lasso_new),
   "Democrats (OLS)" = list(formula = sorting_formula_minus_pid, data=anes20_dem, fun = lm_robust),
-  "Democrats (LASSO)" = list(formula = sorting_formula_minus_pid, data=anes20_dem, fun = lasso)
+  "Democrats (LASSO)" = list(formula = sorting_formula_minus_pid, data=anes20_dem, fun = lasso_new)
 )
 models_to_table(spec,
                 output="results/new_version/a2.tex",
@@ -355,11 +370,11 @@ models_to_table(spec,
 
 spec <- list(
   "Republicans (OLS)" = list(formula = sorting_formula_16_minus_pid, data=anes16_rep, fun = lm_robust),
-  "Republicans (LASSO)" = list(formula = sorting_formula_16_minus_pid, data=anes16_rep, fun = lasso),
+  "Republicans (LASSO)" = list(formula = sorting_formula_16_minus_pid, data=anes16_rep, fun = lasso_new),
   "Independents (OLS)" = list(formula = sorting_formula_16_minus_pid, data=anes16_ind, fun = lm_robust),
-  "Independents (LASSO)" = list(formula = sorting_formula_16_minus_pid, data=anes16_ind, fun = lasso),
+  "Independents (LASSO)" = list(formula = sorting_formula_16_minus_pid, data=anes16_ind, fun = lasso_new),
   "Democrats (OLS)" = list(formula = sorting_formula_16_minus_pid, data=anes16_dem, fun = lm_robust),
-  "Democrats (LASSO)" = list(formula = sorting_formula_16_minus_pid, data=anes16_dem, fun = lasso)
+  "Democrats (LASSO)" = list(formula = sorting_formula_16_minus_pid, data=anes16_dem, fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -379,19 +394,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = satisfaction_formula,
                              data = anes20_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = satisfaction_formula,
                              data = anes20_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = satisfaction_formula,
                              data = anes20_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = satisfaction_formula,
                              data = anes20_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = satisfaction_formula,
                              data = anes20_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -405,19 +420,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = satisfaction_formula_16,
                              data = anes16_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = satisfaction_formula_16,
                              data = anes16_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = satisfaction_formula_16,
                              data = anes16_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = satisfaction_formula_16,
                              data = anes16_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = satisfaction_formula_16,
                              data = anes16_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -439,19 +454,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = checks_formula,
                              data = anes20_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = checks_formula,
                              data = anes20_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = checks_formula,
                              data = anes20_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = checks_formula,
                              data = anes20_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = checks_formula,
                              data = anes20_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -468,19 +483,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = actalone_formula,
                              data = anes20_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = actalone_formula,
                              data = anes20_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = actalone_formula,
                              data = anes20_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = actalone_formula,
                              data = anes20_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = actalone_formula,
                              data = anes20_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -498,19 +513,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = violence_formula,
                              data = anes20_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = violence_formula,
                              data = anes20_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = violence_formula,
                              data = anes20_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = violence_formula,
                              data = anes20_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = violence_formula,
                              data = anes20_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -524,19 +539,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = violence_formula_16,
                              data = anes16_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = violence_formula_16,
                              data = anes16_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = violence_formula_16,
                              data = anes16_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = violence_formula_16,
                              data = anes16_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = violence_formula_16,
                              data = anes16_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -555,19 +570,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = election_formula,
                              data = anes20_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = election_formula,
                              data = anes20_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = election_formula,
                              data = anes20_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = election_formula,
                              data = anes20_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = election_formula,
                              data = anes20_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -581,19 +596,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = election_formula_16,
                              data = anes16_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = election_formula_16,
                              data = anes16_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = election_formula_16,
                              data = anes16_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = election_formula_16,
                              data = anes16_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = election_formula_16,
                              data = anes16_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -612,19 +627,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = compromise_formula,
                              data = anes20_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = compromise_formula,
                              data = anes20_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = compromise_formula,
                              data = anes20_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = compromise_formula,
                              data = anes20_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = compromise_formula,
                              data = anes20_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -638,19 +653,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = compromise_formula_16,
                              data = anes16_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = compromise_formula_16,
                              data = anes16_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = compromise_formula_16,
                              data = anes16_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = compromise_formula_16,
                              data = anes16_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = compromise_formula_16,
                              data = anes16_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -669,19 +684,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = principles_formula,
                              data = anes20_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = principles_formula,
                              data = anes20_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = principles_formula,
                              data = anes20_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = principles_formula,
                              data = anes20_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = principles_formula,
                              data = anes20_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -695,19 +710,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = principles_formula_16,
                              data = anes16_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = principles_formula_16,
                              data = anes16_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = principles_formula_16,
                              data = anes16_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = principles_formula_16,
                              data = anes16_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = principles_formula_16,
                              data = anes16_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -726,19 +741,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = participation_formula,
                              data = anes20_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = participation_formula,
                              data = anes20_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = participation_formula,
                              data = anes20_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = participation_formula,
                              data = anes20_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = participation_formula,
                              data = anes20_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -752,19 +767,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = participation_formula_16,
                              data = anes16_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = participation_formula_16,
                              data = anes16_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = participation_formula_16,
                              data = anes16_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = participation_formula_16,
                              data = anes16_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = participation_formula_16,
                              data = anes16_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -783,19 +798,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = affective_formula,
                              data = anes20_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = affective_formula,
                              data = anes20_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = affective_formula,
                              data = anes20_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = affective_formula,
                              data = anes20_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = affective_formula,
                              data = anes20_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -809,19 +824,19 @@ spec <- list(
                              fun = lm_robust),
   "Republicans (LASSO)" = list(formula = affective_formula_16,
                              data = anes16_rep,
-                             fun = lasso),
+                             fun = lasso_new),
   "Independents (OLS)" = list(formula = affective_formula_16,
                              data = anes16_ind,
                              fun = lm_robust),
   "Independents (LASSO)" = list(formula = affective_formula_16,
                              data = anes16_ind,
-                             fun = lasso),
+                             fun = lasso_new),
   "Democrats (OLS)" = list(formula = affective_formula_16,
                              data = anes16_dem,
                              fun = lm_robust),
   "Democrats (LASSO)" = list(formula = affective_formula_16,
                              data = anes16_dem,
-                             fun = lasso)
+                             fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -898,7 +913,7 @@ spec = list(
   "2012 (LASSO)" = list(
     formula = mason_formula_a1a,
     data = anes12 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
-    fun = lasso),
+    fun = lasso_new),
   "2016 (OLS)" = list(
     formula = mason_formula_a1a,
     data = anes16 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
@@ -906,7 +921,7 @@ spec = list(
   "2016 (LASSO)" = list(
     formula = mason_formula_a1a,
     data = anes16 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
-    fun = lasso),
+    fun = lasso_new),
   "2020 (OLS)" = list(
     formula = mason_formula_a1a,
     data = anes20 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
@@ -914,7 +929,7 @@ spec = list(
   "2020 (LASSO)" = list(
     formula = mason_formula_a1a,
     data = anes20 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
-    fun = lasso)
+    fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -929,7 +944,7 @@ spec = list(
   "2012 (LASSO)" = list(
     formula = mason_formula_a1b,
     data = anes12 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
-    fun = lasso),
+    fun = lasso_new),
   "2016 (OLS)" = list(
     formula = mason_formula_a1b,
     data = anes16 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
@@ -937,7 +952,7 @@ spec = list(
   "2016 (LASSO)" = list(
     formula = mason_formula_a1b,
     data = anes16 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
-    fun = lasso),
+    fun = lasso_new),
   "2020 (OLS)" = list(
     formula = mason_formula_a1b,
     data = anes20 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
@@ -945,7 +960,7 @@ spec = list(
   "2020 (LASSO)" = list(
     formula = mason_formula_a1b,
     data = anes20 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
-    fun = lasso)
+    fun = lasso_new)
 )
 
 models_to_table(spec,
@@ -966,7 +981,7 @@ spec = list(
   "2012 (LASSO)" = list(
     formula = mason_formula_a4,
     data = anes12 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
-    fun = lasso),
+    fun = lasso_new),
   "2016 (OLS)" = list(
     formula = mason_formula_a4,
     data = anes16 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
@@ -974,7 +989,7 @@ spec = list(
   "2016 (LASSO)" = list(
     formula = mason_formula_a4,
     data = anes16 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
-    fun = lasso),
+    fun = lasso_new),
   "2020 (OLS)" = list(
     formula = mason_formula_a4,
     data = anes20 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
@@ -982,7 +997,7 @@ spec = list(
   "2020 (LASSO)" = list(
     formula = mason_formula_a4,
     data = anes20 |> mutate_if(is.numeric, \(x) x / max(x, na.rm=T)),
-    fun = lasso)
+    fun = lasso_new)
 )
 
 models_to_table(spec,
