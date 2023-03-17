@@ -1072,7 +1072,7 @@ p1 <- ggplot(filter(t1, term!="Intercept"), aes(x=term, alpha = star, color=hypo
        y="Coefficient",
        title="Predictors of party-ideology sorting, 2016 ANES",
        caption = caption,
-       color = "Hypothesis") +
+       color = "Hypotheses") +
   guides(alpha="none") +
   scale_alpha_continuous(range = c(0.25, 1)) +
   scale_color_brewer(type = "qual", palette = 6, na.value="gray50") +
@@ -1106,6 +1106,7 @@ p2 <- ggplot(filter(t2, term!="Intercept"), aes(x=term, color=hypothesis)) +
   labs(x="Term",
        y="Coefficient",
        title="Predictors of party-ideology sorting, 2020 ANES",
+       color="Hypotheses",
        caption = caption) +
   guides(alpha="none") +
   scale_alpha_continuous(range = c(0.25, 1)) +
@@ -1167,7 +1168,7 @@ r <- lapply(spec,
            fct_relevel(COEFRENAMER) |>
            fct_rev())
 # TODO: don't hard-code these
-r$hypothesis <- c(rep("Democratic Norms", 7), rep("Emotion", 2))
+r$hypothesis <- c(rep("Democratic Norms", 7), rep("Participation and Affect", 2))
 
 caption <- "Plot shows estimated relationship with sorting for each DV.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
 p3 <- ggplot(r, aes(x=outcome, y=estimate, ymin=conf.low, color=hypothesis,
@@ -1233,7 +1234,7 @@ r <- lapply(spec,
            fct_relevel(COEFRENAMER) |>
            fct_rev())
 # TODO: don't hard-code these
-r$hypothesis <- c(rep("Democratic Norms", 5), rep("Emotion", 2))
+r$hypothesis <- c(rep("Democratic Norms", 5), rep("Participation and Affect", 2))
 
 p4 <- ggplot(r, aes(x=outcome, y=estimate, color = hypothesis,
                     ymin=conf.low, ymax=conf.high, alpha = if_else(p.value < 0.05, 1, 0))) +
