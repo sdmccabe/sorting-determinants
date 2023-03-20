@@ -1,0 +1,170 @@
+\documentclass[10pt,landscape]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{longtable}[=v4.13]%
+\usepackage{tabu,booktabs}
+\usepackage{siunitx}
+\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}
+\usepackage{multirow}
+\usepackage{dcolumn}
+\usepackage{subfig, float}
+\usepackage[english]{babel}
+\usepackage[autostyle, english = american]{csquotes}
+\usepackage{caption}
+\usepackage{rotating}
+\usepackage{soul,color}
+\usepackage[nottoc,numbib]{tocbibind}
+\usepackage{pdflscape} 
+\usepackage{caption}
+\usepackage{color,soul}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage[authordate,backend=bibtex,isbn=false]{biblatex-chicago}
+\addbibresource{bib.bib}
+
+\newcolumntype{d}{S[
+    input-open-uncertainty=,
+    input-close-uncertainty=,
+    parse-numbers = false,
+    table-align-text-pre=false,
+    table-align-text-post=false
+ ]}
+
+\begin{document}
+%\begin{landscape}
+\listoffigures
+\listoftables
+\clearpage
+
+\section{Details on LASSO models}
+
+We use the \texttt{glmnet} package in R to estimate all models \parencite{simon_regularization_2011}. 
+The LASSO model is parameterized by a penalty term \(\lambda\) that tunes the amount of regularization in the model; LASSO regularizes by removing (i.e., setting the associate coefficient to zero) terms that do not improve predictive performance.
+To determine the appropriate value of \(\lambda\), we use 10-fold cross-validation, sweeping across a range of candidate \(\lambda\)s and selecting the value that minimizes the error when averaging over the cross-validation folds.
+In the tables below, we report the LASSO coefficients for the model with this \(\lambda\), as well as the McFadden pseudo-\(R^2\) for comparison with the OLS models.
+Terms that the LASSO model has regularized out are represented with a `---'. 
+(If a term in the LASSO model is zero, that means that it was not penalized out---it has some predictive accuracy when included---but its coeffcient is zero or very close to zero.)
+
+In general, the OLS and LASSO models are quite similar; the McFadden pseudo-\(R^2\) of the LASSO models is often comparable to the adjusted \(R^2\) of the OLS models, and terms that are statistically significant in the OLS models tend to be the terms not excluded by the LASSO models. 
+
+\clearpage
+\section{Changes in Sorting Over Time}
+The analyses presented in the main text indicate a connection between party-ideology sorting and affective polarization and participation; at the same time, we find no evidence of a link between sorting and attitudes about democracy.
+However, the data we have used are all observational and cross-sectional. 
+As such, the strength of our claims depends on the assumption that there are no major confounders we have omitted from our analyses. 
+Despite the extensive set of controls we have included, there may be other variables (measured or unmeasured) that we have not considered that would change our results.
+
+One way to address this issue is to consider changes in sorting in the same individual over time and connect those changes to these attitudes about democracy. 
+This requires repeated observation of the same individual at more than one point in time and a consistent measure of sorting at both points.
+Fortunately, one component of the 2020 ANES was a re-interview of a group of more than 2,000 respondents to the 2016 ANES.
+This panel of respondents provides us with the opportunity to evaluate the effects of sorting to confirm our cross-sectional analyses.
+
+Using these data, we continue to observe no link between changes in partisan sorting and attitudes about democracy. 
+We take this as confirmatory evidence of the analyses presented in the main text.
+
+\input{../tables/tex/a14.tex}
+
+
+\clearpage
+\section{Supplementary Figures}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../figures/sorting_distributions.pdf}
+    \caption{Distribution of partisan-ideological sorting, 2012--2020.}
+    \label{fig:sorting_distribution}
+\end{figure}
+
+\clearpage
+\section{Supplementary Tables}
+
+
+\input{../tables/tex/a1.tex}
+\clearpage
+
+\input{../tables/tex/a2.tex}
+\clearpage
+
+\input{../tables/tex/a3.tex}
+\clearpage
+
+\input{../tables/tex/a4.tex}
+\clearpage
+
+\input{../tables/tex/a4_lasso.tex}
+\clearpage
+
+\input{../tables/tex/a4_16.tex}
+\clearpage
+
+\input{../tables/tex/a4_lasso_16.tex}
+\clearpage
+
+\input{../tables/tex/a5a.tex}
+\clearpage
+
+\input{../tables/tex/a5b.tex}
+\clearpage
+
+\input{../tables/tex/a6.tex}
+\clearpage
+
+\input{../tables/tex/a7.tex}
+\clearpage
+
+\input{../tables/tex/a8a.tex}
+\clearpage
+
+\input{../tables/tex/a8b.tex}
+\clearpage
+
+\input{../tables/tex/a9a.tex}
+\clearpage
+
+\input{../tables/tex/a9b.tex}
+\clearpage
+
+\input{../tables/tex/a10a.tex}
+\clearpage
+
+\input{../tables/tex/a10b.tex}
+\clearpage
+
+\input{../tables/tex/a11a.tex}
+\clearpage
+
+\input{../tables/tex/a11b.tex}
+\clearpage
+
+\input{../tables/tex/a12a.tex}
+\clearpage
+
+\input{../tables/tex/a12b.tex}
+\clearpage
+
+\input{../tables/tex/a13a.tex}
+\clearpage
+
+\input{../tables/tex/a13b.tex}
+\clearpage
+
+%\input{../tables/tex/mason_a1a.tex}
+%\clearpage
+
+%\input{../tables/tex/mason_a1b.tex}
+%\clearpage
+
+\input{../tables/tex/mason_a4.tex}
+\clearpage
+
+\input{../tables/tex/mason_replication.tex}
+\clearpage
+\input{../tables/tex/mason_replication_lasso.tex}
+\clearpage
+
+
+%\section{References}
+\printbibliography
+
+%\end{landscape}
+
+\end{document}

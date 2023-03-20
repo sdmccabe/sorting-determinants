@@ -281,13 +281,13 @@ spec <- list(
 )
 
 models_to_table(spec,
-                output="results/new_version/a4.tex",
+                output="results/tables/tex/a4.tex",
                 title="Effects of sorting, models behind Figure 4 (2020) (OLS)")
 
 # replace OLS with lasso_new for alternate table
 spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
 models_to_table(spec,
-                output="results/new_version/a4_lasso_new.tex",
+                output="results/tables/tex/a4_lasso.tex",
                 title="Effects of sorting, models behind Figure 4 (2020) (LASSO)")
 
 spec <- list(
@@ -322,13 +322,13 @@ spec <- list(
 )
 
 models_to_table(spec,
-                output="results/new_version/a4_16.tex",
+                output="results/tables/tex/a4_16.tex",
                 title="Effects of sorting, models behind Figure 4 (2016) (OLS)")
 
 # replace OLS with lasso_new for alternate table
 spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
 models_to_table(spec,
-                output="results/new_version/a4_lasso_new_16.tex",
+                output="results/tables/tex/a4_lasso_16.tex",
                 title="Effects of sorting, models behind Figure 4 (2016) (LASSO)")
 
 # Table A.1 ----------------------------------------------------------------
@@ -350,7 +350,7 @@ spec <- list(
                               data = anes20,
                               fun = lasso_new)
 )
-models_to_table(spec, output="results/new_version/a1.tex",
+models_to_table(spec, output="results/tables/tex/a1.tex",
                 title = "Detailed results predicting sorting, whole sample")
 
 # Tables A.2 and A.3 ---------------------------------------------------------------
@@ -367,7 +367,7 @@ spec <- list(
   "Democrats (LASSO)" = list(formula = sorting_formula_minus_pid, data=anes20_dem, fun = lasso_new)
 )
 models_to_table(spec,
-                output="results/new_version/a2.tex",
+                output="results/tables/tex/a2.tex",
                 title="Detailed results predicting sorting, partisan categories, 2020")
 
 spec <- list(
@@ -380,7 +380,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a3.tex",
+  output = "results/tables/tex/a3.tex",
   title = "Detailed results predicting sorting, partisan categories, 2020",
   notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
@@ -412,7 +412,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a5a.tex",
+  output = "results/tables/tex/a5a.tex",
   title = "Effects of sorting on democratic dissatisfaction, partisan categories, 2020"
 )
 
@@ -438,7 +438,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a5b.tex",
+  output = "results/tables/tex/a5b.tex",
   title = "Effects of sorting on democratic dissatisfaction, partisan categories, 2016",
   notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
@@ -473,7 +473,7 @@ spec <- list(
 
 models_to_table(spec,
   title = "Effects of sorting on support for checks and balances, partisan categories, 2020",
-  output = "results/new_version/a6.tex"
+  output = "results/tables/tex/a6.tex"
   )
 
 # Table A.7 ---------------------------------------------------------------
@@ -502,7 +502,7 @@ spec <- list(
 
 models_to_table(spec,
   title = "Effects of sorting on president acting alone, partisan categories, 2020",
-  output = "results/new_version/a7.tex"
+  output = "results/tables/tex/a7.tex"
 )
 
 # Table A.8 ---------------------------------------------------------------
@@ -532,7 +532,7 @@ spec <- list(
 
 models_to_table(spec,
   title = "Effects of sorting on support for political violence, partisan categories, 2020",
-  output = "results/new_version/a8a.tex"
+  output = "results/tables/tex/a8a.tex"
 )
 
 spec <- list(
@@ -557,7 +557,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a8b.tex",
+  output = "results/tables/tex/a8b.tex",
   title = "Effects of sorting on support for political violence, partisan categories, 2016",
   notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
@@ -589,7 +589,7 @@ spec <- list(
 
 models_to_table(spec,
   title = "Effects of sorting on election integrity skepticism, partisan categories, 2020",
-  output = "results/new_version/a9a.tex"
+  output = "results/tables/tex/a9a.tex"
 )
 
 spec <- list(
@@ -614,7 +614,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a9b.tex",
+  output = "results/tables/tex/a9b.tex",
   title = "Effects of sorting on election integrity skepticism, partisan categories, 2016",
   notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
@@ -646,7 +646,7 @@ spec <- list(
 
 models_to_table(spec,
   title = "Effects of sorting on belief compromise is selling out, partisan categories, 2020",
-  output = "results/new_version/a10a.tex"
+  output = "results/tables/tex/a10a.tex"
 )
 
 spec <- list(
@@ -671,7 +671,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a10b.tex",
+  output = "results/tables/tex/a10b.tex",
   title = "Effects of sorting on belief compromise is selling out, partisan categories, 2016",
   notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
@@ -703,7 +703,7 @@ spec <- list(
 
 models_to_table(spec,
   title = "Effects of sorting on preferring leader who sticks to principles, partisan categories, 2020",
-  output = "results/new_version/a11a.tex"
+  output = "results/tables/tex/a11a.tex"
 )
 
 spec <- list(
@@ -728,7 +728,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a11b.tex",
+  output = "results/tables/tex/a11b.tex",
   title = "Effects of sorting on preferring leader who sticks to principles, partisan categories, 2016",
   notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
@@ -759,7 +759,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a12a.tex",
+  output = "results/tables/tex/a12a.tex",
   title = "Effects of sorting on political participation, partisan categories, 2020",
 )
 
@@ -785,7 +785,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a12b.tex",
+  output = "results/tables/tex/a12b.tex",
   title = "Effects of sorting on political participation, partisan categories, 2016",
   notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
@@ -816,7 +816,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a13a.tex",
+  output = "results/tables/tex/a13a.tex",
   title = "Effects of sorting on affective polarization, partisan categories, 2020",
 )
 
@@ -842,7 +842,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a13b.tex",
+  output = "results/tables/tex/a13b.tex",
   title = "Effects of sorting on affective polarization, partisan categories, 2016",
   notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
@@ -886,7 +886,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-  output = "results/new_version/a14.tex",
+  output = "results/tables/tex/a14.tex",
   title = "Effects of changes in sorting on dependent variables"
 )
 
@@ -935,7 +935,7 @@ spec = list(
 )
 
 models_to_table(spec,
-                output = "results/new_version/mason_a1a.tex",
+                output = "results/tables/tex/mason_a1a.tex",
                 title = "Replication of Mason (2018) Table A.1a")
 
 spec = list(
@@ -966,7 +966,7 @@ spec = list(
 )
 
 models_to_table(spec,
-                output = "results/new_version/mason_a1b.tex",
+                output = "results/tables/tex/mason_a1b.tex",
                 title = "Replication of Mason (2018) Table A.1b")
 
 
@@ -1003,7 +1003,7 @@ spec = list(
 )
 
 models_to_table(spec,
-                output = "results/new_version/mason_a4.tex",
+                output = "results/tables/tex/mason_a4.tex",
                 title = "Replication of Mason (2018) Table A.4")
 
 
@@ -1031,7 +1031,7 @@ spec <- list(
 )
 
 models_to_table(spec,
-                output = "results/new_version/mason_replication.tex",
+                output = "results/tables/tex/mason_replication.tex",
                 title = "Comparison to Mason (2018) affective polarization model (OLS)",
                 notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.",
                              "Coefficients may differ from originating tables due to differences in pre-processing.")
@@ -1040,7 +1040,7 @@ models_to_table(spec,
 # replace OLS with lasso_new for alternate table
 spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
 models_to_table(spec,
-                output="results/new_version/mason_replication_lasso_new.tex",
+                output="results/tables/tex/mason_replication_lasso.tex",
                 title="Comparison to Mason (2018) affective polarization model (LASSO)")
 
 
@@ -1081,7 +1081,9 @@ p1 <- ggplot(filter(t1, term!="Intercept"), aes(x=term, alpha = star, color=hypo
   facet_wrap(vars(model), nrow = 1) +
   theme(text = element_text(size=16),
         plot.caption = element_text(size=12))
-ggsave("results/new_version/fig1.png", plot=p1, dpi=400, width=16, height=9, units="in")
+
+ggsave("results/figures/sorting_predictors_2016.png", plot=p1, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2016.pdf", plot=p1, dpi=400, width=16, height=9, units="in")
 
 m1 <- lm_robust(sorting_formula, data=anes20, weights = anes20$weight)  |> tidy() |> mutate(model="All")
 m2 <- lm_robust(sorting_formula_minus_pid, data=anes20_dem, weights = anes20_dem$weight) |> tidy() |> mutate(model="Democrats")
@@ -1117,7 +1119,8 @@ p2 <- ggplot(filter(t2, term!="Intercept"), aes(x=term, color=hypothesis)) +
   theme(text = element_text(size=16),
         plot.caption = element_text(size=12))
 
-ggsave("results/new_version/fig2.png", plot = p2, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020.png", plot = p2, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020.png", plot = p2, dpi=400, width=16, height=9, units="in")
 
 
 spec <- list(
@@ -1192,7 +1195,9 @@ p3 <- ggplot(r, aes(x=outcome, y=estimate, ymin=conf.low, color=hypothesis,
   ) +
   theme(text = element_text(size=16),
         plot.caption = element_text(size=12))
-ggsave("results/new_version/fig3.png", plot = p3, dpi=400, width=16, height=9, units="in")
+
+ggsave("results/figures/sorting_outcomes_2020.png", plot = p3, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2020.pdf", plot = p3, dpi=400, width=16, height=9, units="in")
 
 
 spec <- list(
@@ -1257,7 +1262,9 @@ p4 <- ggplot(r, aes(x=outcome, y=estimate, color = hypothesis,
   ) +
   theme(text = element_text(size=16),
         plot.caption = element_text(size=12))
-ggsave("results/new_version/fig4.png", plot = p4, dpi=400, width=16, height=9, units="in")
+
+ggsave("results/figures/sorting_outcomes_2016.png", plot = p4, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2016.pdf", plot = p4, dpi=400, width=16, height=9, units="in")
 
 p5 <- bind_rows(
   select(anes20, sorting_r) |>
@@ -1273,4 +1280,6 @@ p5 <- bind_rows(
   labs(x="Sorting",
        y="Count", title="Distribution of partisan-ideological sorting, 2012-2020",
        caption="Distributions are sourced from each year's respective ANES.\nA score of one indicates perfect sorting (strong Rep/strong con or strong Dem/strong lib)")
-ggsave("results/new_version/fig5.png", plot = p5, dpi=400, width=12, height=9, units="in")
+
+ggsave("results/figures/sorting_distributions.png", plot = p5, dpi=400, width=12, height=9, units="in")
+ggsave("results/figures/sorting_distributions.pdf", plot = p5, dpi=400, width=12, height=9, units="in")

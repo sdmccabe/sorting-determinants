@@ -42,7 +42,6 @@ vignettes/*.pdf
 *.html
 *.png
 *.pdf
-*.tex
 *.aux
 *.blg
 *.fdb_latexmk
