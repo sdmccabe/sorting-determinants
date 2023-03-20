@@ -8,6 +8,8 @@ library(glmnetUtils)
 library(modelsummary)
 library(tidymodels)
 
+set.seed(1679068582)
+
 # override modelsummary's default goodness-of-fit statistics to
 # show LASSO pseudo-R2
 GOF_MAP <- rbind(modelsummary::gof_map,
