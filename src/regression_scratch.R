@@ -1268,7 +1268,7 @@ p5 <- bind_rows(
   geom_histogram(binwidth=0.05) +
   facet_wrap(vars(year), ncol=1, scales="free") +
   theme_bw() +
-  labs(x="Sorting (lower is more sorted)",
+  labs(x="Sorting",
        y="Count", title="Distribution of partisan-ideological sorting, 2012-2020",
-       caption="Distributions are sourced from each year's respective ANES.")
+       caption="Distributions are sourced from each year's respective ANES.\nA score of one indicates perfect sorting (strong Rep/strong con or strong Dem/strong lib)")
 ggsave("results/new_version/fig5.png", plot = p5, dpi=400, width=12, height=9, units="in")
