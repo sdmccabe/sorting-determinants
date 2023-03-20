@@ -213,7 +213,7 @@ anes20 <- anes20 |>
     # for constructing Mason sorting variables
     pid7 = case_when(pid7 >= 90 ~ 4, TRUE ~ pid7),
     ideo = case_when(ideo >= 90 ~ 4, TRUE ~ ideo),
-    ideo = reverse_code(ideo),
+    #ideo = reverse_code(ideo),
     male = gender == 1,
     female = gender == 2,
     white = race == 1,
@@ -604,7 +604,7 @@ anes16 <- anes16 |>
     # recode 99s to 4s (DK/Refuse to moderate)
     pid7 = case_when(pid7 >= 90 ~ 4, TRUE ~ pid7),
     ideo = case_when(ideo >= 90 ~ 4, TRUE ~ ideo),
-    ideo = reverse_code(ideo),
+    #ideo = reverse_code(ideo),
     male = gender == 1,
     female = gender == 2,
     white = race == 1,
@@ -798,7 +798,7 @@ anes16 <- anes16 |>
                                      aid_minorities_str, employment_str, defense_str),
                                 \(...) (sd(c(...), na.rm = TRUE))),
     # Mason replication models want PID reverse coded
-    pid7 = reverse_code(pid7),
+    # pid7 = reverse_code(pid7),
     anger_outpartisan = pmap_dbl(list(dem, rep, anger_dem, anger_rep),
                                  \(d, r, ad, ar) case_when(d == TRUE ~ ar, r == TRUE ~ ad, TRUE ~ NA_integer_)),
     #anger_outpartisan = anger_outpartisan == 1
@@ -868,7 +868,7 @@ anes12 <- anes12 |>
     # NOTE: see discuss of coding of `ind` in anes20
     ind = pid7 %in% c(4, 99),
     # pid7 = reverse_code(pid7),
-    ideo = reverse_code(ideo),
+    #ideo = reverse_code(ideo),
     # NOTE: "Political South" not "Census South"
     south = state %in% c("AL", "AR", "FL", "GA", "LA", "MS",
                          "NC", "SC", "TN", "TX", "VA"),
