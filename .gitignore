@@ -37,5 +37,32 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
-results/
+
+# anything modelsummary could output
+*.html
+*.png
+*.pdf
+*.tex
+*.aux
+*.blg
+*.fdb_latexmk
+*.sdv
+*.log
+*.lot
+*.docx
+*.ttf
+*.css
+*.map
+*.bib
+*.js
+*.eot
+*.svg
+*.woff
+*.woff2
+*.fls
+*.bbl
+*.dvi
+*.xml
+*.xdv
+*.lof
 .DS_Store
