@@ -76,7 +76,29 @@ COEFRENAMER <- c(
   "comp1.1" = "Compromise is selling out",
   "comp2.1" = "Prefer leader sticks to principles",
   "MASONINDEX1" = "Participation",
-  "ftdifference" = "Affective polarization"
+  "ftdifference" = "Affective polarization",
+  "tucker" = "Tucker Carlson",
+  "hannity" = "Hannity",
+  "the_five" = "The Five",
+  "ingraham" = "The Ingraham Angle",
+  "maccallum" = "The Story with Martha MacCallum",
+  "baier" = "Special Report with Bret Baier",
+  "fox_and_friends" = "Fox and Friends",
+  "maddow" = "The Rachel Maddow Show",
+  "lawrence" = "The Last Word with Lawrence O'Donnell",
+  "morning_joe" = "Morning Joe",
+  "chris_hayes" = "All In with Chris Hayes",
+  "brian_williams" = "NBC Nightly News",
+  "tapper" = "The Lead with Jake Tapper",
+  "anderson" = "Anderson Cooper 360",
+  "cuomo" = "Cuomo Prime Time",
+  "erin_burnett" = "Erin Burnett OutFront",
+  "kelly" = "The Kelly File",
+  "van_susteren" = "On the Record with Greta van Susteren",
+  "oreilly" = "The O'Reilly Factor",
+  "chris_matthews" = "Hardball with Chris Matthews",
+  "nancy_grace" = "Nancy Grace",
+  "cnn_en_espanol" = "CNN en Espanol"
 )
 
 
@@ -236,6 +258,29 @@ sorting_plus_controls_16_minus_pid <- update.formula(sorting_plus_controls_16, ~
 default_controls_minus_pid <- update.formula(default_controls, ~ . - rep - ind - pid7_str)
 default_controls_16_minus_pid <- update.formula(default_controls, ~ . - rep - ind - pid7_str)
 
+sorting_formula <- update.formula(default_controls, sorting_r ~ .)
+sorting_formula_16 <- update.formula(default_controls_16, sorting_r ~ .)
+
+sorting_formula_minus_pid <- update.formula(sorting_formula, ~ . - rep - ind - pid7_str - ideo)
+sorting_formula_16_minus_pid <- update.formula(sorting_formula_16, ~ . - rep - ind - pid7_str - ideo)
+
+sorting_formula_disaggregate_media <- update.formula(sorting_formula,
+  ~ . - news_fox - news_msnbc - news_cnn + hannity + tucker + the_five +
+    ingraham + maccallum + baier + fox_and_friends + maddow + lawrence +
+    morning_joe + chris_hayes + brian_williams + tapper + anderson +
+    cuomo + erin_burnett)
+
+sorting_formula_disaggregate_media_16 <- update.formula(sorting_formula_16,
+  ~ . - news_fox - news_msnbc - news_cnn + hannity + kelly + van_susteren +
+      oreilly + chris_matthews + maddow + anderson + nancy_grace +
+    erin_burnett + cnn_en_espanol)
+
+sorting_formula_disaggregate_media_minus_pid <-
+  update.formula(sorting_formula_disaggregate_media, ~ . - rep - ind - pid7_str - ideo)
+
+sorting_formula_disaggregate_media_16_minus_pid <-
+  update.formula(sorting_formula_disaggregate_media_16, ~ . - rep - ind - pid7_str - ideo)
+
 # Table A.4 -----------------------------------------------------------------
 
 # NOTE: the results will differ because because of a change in weighting -
@@ -333,9 +378,6 @@ models_to_table(spec,
 
 # Table A.1 ----------------------------------------------------------------
 
-sorting_formula <- update.formula(default_controls, sorting_r ~ .)
-sorting_formula_16 <- update.formula(default_controls_16, sorting_r ~ .)
-
 spec <- list(
   "2016 Sorting (OLS)" = list(formula = sorting_formula_16,
                               data = anes16,
@@ -354,9 +396,6 @@ models_to_table(spec, output="results/tables/tex/a1.tex",
                 title = "Detailed results predicting sorting, whole sample")
 
 # Tables A.2 and A.3 ---------------------------------------------------------------
-
-sorting_formula_minus_pid <- update.formula(sorting_formula, ~ . - rep - ind - pid7_str)
-sorting_formula_16_minus_pid <- update.formula(sorting_formula_16, ~ . - rep - ind - pid7_str)
 
 spec <- list(
   "Republicans (OLS)" = list(formula = sorting_formula_minus_pid, data=anes20_rep, fun = lm_robust),
@@ -381,7 +420,7 @@ spec <- list(
 
 models_to_table(spec,
   output = "results/tables/tex/a3.tex",
-  title = "Detailed results predicting sorting, partisan categories, 2020",
+  title = "Detailed results predicting sorting, partisan categories, 2016",
   notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
 )
 
@@ -1067,7 +1106,7 @@ caption <- "Plot shows estimated relationship with sorting, where 0 indicates pe
 p1 <- ggplot(filter(t1, term!="Intercept"), aes(x=term, alpha = star, color=hypothesis)) +
   geom_point(aes(y = estimate), size=2) +
   geom_linerange(aes(ymin=conf.low, ymax=conf.high)) +
-  coord_flip(ylim = c(-0.2, 0.2)) +
+  coord_flip(ylim = c(-0.25, 0.25)) +
   geom_hline(yintercept=0, linetype="dashed") +
   theme_bw() +
   labs(x="Term",
@@ -1104,7 +1143,7 @@ t2 <- bind_rows(m1, m2, m3, m4) |> tibble()|>
 p2 <- ggplot(filter(t2, term!="Intercept"), aes(x=term, color=hypothesis)) +
   geom_point(aes(y = estimate, alpha = star)) +
   geom_linerange(aes(ymin=conf.low, ymax=conf.high, alpha=star)) +
-  coord_flip(ylim = c(-0.2, 0.2)) +
+  coord_flip(ylim = c(-0.25, 0.25)) +
   geom_hline(yintercept=0, linetype="dashed") +
   theme_bw() +
   labs(x="Term",
@@ -1283,3 +1322,68 @@ p5 <- bind_rows(
 
 ggsave("results/figures/sorting_distributions.png", plot = p5, dpi=400, width=12, height=9, units="in")
 ggsave("results/figures/sorting_distributions.pdf", plot = p5, dpi=400, width=12, height=9, units="in")
+
+
+
+# Scratch ---------------------------------------------------------------
+
+anes20 <- anes20 |> mutate(across(hannity:erin_burnett, ~map_int(., \(x) (case_when(is.na(x) ~ 0, TRUE ~ x)))))
+anes16 <- anes16 |> mutate(across(hannity:cnn_en_espanol, ~map_int(., \(x) (case_when(is.na(x) ~ 0, TRUE ~ x)))))
+
+anes20_rep <- filter(anes20, rep == 1)
+anes20_dem <- filter(anes20, dem == 1)
+anes20_ind <- filter(anes20, ind == 1)
+
+anes16_rep <- filter(anes16, rep == 1)
+anes16_dem <- filter(anes16, dem == 1)
+anes16_ind <- filter(anes16, ind == 1)
+
+spec <- list(
+  "2016 Sorting (OLS)" = list(formula = sorting_formula_disaggregate_media_16_minus_pid,
+                              data = anes16,
+                              fun = lm_robust),
+  "2016 Sorting (LASSO)" = list(formula = sorting_formula_disaggregate_media_16_minus_pid,
+                                data = anes16,
+                                fun = lasso_new),
+  "2020 Sorting (OLS)" = list(formula = sorting_formula_disaggregate_media_minus_pid,
+                              data = anes20,
+                              fun = lm_robust),
+  "2020 Sorting (LASSO)" = list(formula = sorting_formula_disaggregate_media_minus_pid,
+                                data = anes20,
+                                fun = lasso_new)
+)
+models_to_table(spec, output="results/tables/tex/disagg_media.tex",
+                title = "Detailed results predicting sorting, whole sample")
+
+
+
+spec <- list(
+  "Republicans (OLS)" = list(formula = sorting_formula_disaggregate_media_minus_pid, data=anes20_rep, fun = lm_robust),
+  "Republicans (LASSO)" = list(formula = sorting_formula_disaggregate_media_minus_pid, data=anes20_rep, fun = lasso_new),
+  "Independents (OLS)" = list(formula = sorting_formula_disaggregate_media_minus_pid, data=anes20_ind, fun = lm_robust),
+  "Independents (LASSO)" = list(formula = sorting_formula_disaggregate_media_minus_pid, data=anes20_ind, fun = lasso_new),
+  "Democrats (OLS)" = list(formula = sorting_formula_disaggregate_media_minus_pid, data=anes20_dem, fun = lm_robust),
+  "Democrats (LASSO)" = list(formula = sorting_formula_disaggregate_media_minus_pid, data=anes20_dem, fun = lasso_new)
+)
+
+models_to_table(spec,
+                output = "results/tables/tex/disagg_media_partisan_2020.tex",
+                title = "Detailed results predicting sorting, partisan categories, 2020",
+                notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
+)
+
+
+spec <- list(
+  "Republicans (OLS)" = list(formula = sorting_formula_disaggregate_media_16_minus_pid, data=anes16_rep, fun = lm_robust),
+  "Republicans (LASSO)" = list(formula = sorting_formula_disaggregate_media_16_minus_pid, data=anes16_rep, fun = lasso_new),
+  "Independents (OLS)" = list(formula = sorting_formula_disaggregate_media_16_minus_pid, data=anes16_ind, fun = lm_robust),
+  "Independents (LASSO)" = list(formula = sorting_formula_disaggregate_media_16_minus_pid, data=anes16_ind, fun = lasso_new),
+  "Democrats (OLS)" = list(formula = sorting_formula_disaggregate_media_16_minus_pid, data=anes16_dem, fun = lm_robust),
+  "Democrats (LASSO)" = list(formula = sorting_formula_disaggregate_media_16_minus_pid, data=anes16_dem, fun = lasso_new)
+)
+
+models_to_table(spec,
+                output = "results/tables/tex/disagg_media_partisan_2016.tex",
+                title = "Detailed results predicting sorting, partisan categories, 2016",
+                notes = list("In 2016, the Facebook variable referred to both Facebook and Twitter use.")
+)
