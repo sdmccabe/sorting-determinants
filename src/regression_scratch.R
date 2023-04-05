@@ -1159,7 +1159,7 @@ p2 <- ggplot(filter(t2, term!="Intercept"), aes(x=term, color=hypothesis)) +
         plot.caption = element_text(size=12))
 
 ggsave("results/figures/sorting_predictors_2020.png", plot = p2, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2020.png", plot = p2, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020.pdf", plot = p2, dpi=400, width=16, height=9, units="in")
 
 
 spec <- list(
