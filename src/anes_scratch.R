@@ -341,7 +341,7 @@ anes20 <- anes20 |>
     # NOTE: double check `educ` vs `education`
     # educ = case_when(educ == 95 ~ NA_real_, TRUE ~ educ),
     comp1.1 = reverse_code(comp1) / 5,
-    comp2.1 = comp2 == 1,
+    comp2.1 = comp2 == 2,
     joinprotest = joined025 == 1,
     commiss = community == 1,
     conoff = contact034 == 1,
@@ -713,7 +713,7 @@ anes16 <- anes16 |>
     # TODO: resolve educ v. education
     # educ = case_when(educ == 95 ~ NA_real_, TRUE ~ educ),
     comp1.1 = reverse_code(comp1) / 5,
-    comp2.1 = comp2 == 1,
+    comp2.1 = comp2 == 2,
     joinprotest = joined025 == 1,
     commiss = community == 1,
     conoff = contact034 == 1,
