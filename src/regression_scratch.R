@@ -1144,7 +1144,6 @@ make_predictors_plot <- function(spec, title) {
 spec <- list(
   "All" = list(formula = sorting_formula_16, data = anes16, label = "All"),
   "Democrats" = list(formula = sorting_formula_16_minus_pid, data = anes16_dem, label = "Democrats"),
-  "Independents" = list(formula = sorting_formula_16_minus_pid, data = anes16_ind, label = "Independents"),
   "Republicans" = list(formula = sorting_formula_16_minus_pid, data = anes16_rep, label = "Republicans")
 )
 p1 <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2016 ANES")
@@ -1152,7 +1151,6 @@ p1 <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2016 ANE
 spec <- list(
   "All" = list(formula = sorting_formula_16_supp, data = anes16, label = "All"),
   "Democrats" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_dem, label = "Democrats"),
-  "Independents" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_ind, label = "Independents"),
   "Republicans" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_rep, label = "Republicans")
 )
 p1_supp <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2016 ANES")
@@ -1160,7 +1158,6 @@ p1_supp <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 201
 spec <- list(
   "All" = list(formula = sorting_formula_supp, data = anes20, label = "All"),
   "Democrats" = list(formula = sorting_formula_minus_pid, data = anes20_dem, label = "Democrats"),
-  "Independents" = list(formula = sorting_formula_minus_pid, data = anes20_ind, label = "Independents"),
   "Republicans" = list(formula = sorting_formula_minus_pid, data = anes20_rep, label = "Republicans")
 )
 p2 <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2020 ANES")
@@ -1168,7 +1165,6 @@ p2 <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2020 ANE
 spec <- list(
   "All" = list(formula = sorting_formula_16_supp, data = anes16, label = "All"),
   "Democrats" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_dem, label = "Democrats"),
-  "Independents" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_ind, label = "Independents"),
   "Republicans" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_rep, label = "Republicans")
 )
 p2_supp <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2020 ANES")
