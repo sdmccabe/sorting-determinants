@@ -229,40 +229,59 @@ anes16_ind <- filter(anes16, ind == 1)
 
 # these models all take the form DV ~ consistent set of predictors
 # so define the predictors, then use those to create the formulae
-sorting_plus_controls <- . ~ sorting_r + age + rep + ind + male + urban + smalltown +
+
+# NOTE: _supp vs. not - we have two model specifications - one that includes PID
+#       str, and ideology in subsamples, and one that does not.
+sorting_plus_controls_supp <- . ~ sorting_r + age + rep + ind + male + urban + smalltown +
   rural + income + educ + ideo + union + gun + married + gay + bi +
   children + RR + AUTH + religscale + bornagain + white + know_scale +
   news_fox + news_cnn + news_msnbc + facebook + twitter + instagram + reddit +
   youtube + snapchat + tiktok + sm_other + issue_strength +issue_constraint +
   issue_strength:issue_constraint + pid7_str
+sorting_plus_controls <- update.formula(sorting_plus_controls_supp, ~ . - pid7_str)
 
-sorting_plus_controls_16 <- update.formula(sorting_plus_controls, ~ . -
+sorting_plus_controls_16_supp <- update.formula(sorting_plus_controls_supp, ~ . -
   urban - smalltown - rural - facebook - twitter - instagram - reddit -
   snapchat - tiktok - sm_other - youtube + facebook_tw)
+sorting_plus_controls_16 <- update.formula(sorting_plus_controls_16_supp, ~ . - pid7_str)
 
 # other models are going to use these controls minus sorting
-default_controls <- . ~ female + age + rep + ind + urban + smalltown +
+default_controls_supp <- . ~ female + age + rep + ind + urban + smalltown +
   rural + income + educ + ideo + union + gun + gay + bi +  children + RR +
   AUTH + religscale + bornagain + white + facebook + twitter + instagram +
   reddit + youtube + snapchat + tiktok + sm_other + news_msnbc + news_cnn +
   news_fox + know_scale + issue_strength + issue_constraint +
   issue_strength:issue_constraint + pid7_str
+default_controls <- update.formula(default_controls_supp, ~ . - pid7_str)
 
-default_controls_16 <- update.formula(default_controls, ~ . -
+default_controls_16_supp <- update.formula(default_controls_supp, ~ . -
                                         urban - smalltown - rural - facebook - twitter - instagram - reddit -
                                         snapchat - tiktok - sm_other - youtube + facebook_tw)
+default_controls_16 <- update.formula(default_controls_16_supp, ~ . - pid7_str)
 
 # others are going to study PID subsets, and therefore need to drop PID
-sorting_plus_controls_minus_pid <- update.formula(sorting_plus_controls, ~ . - rep - ind - pid7_str)
-sorting_plus_controls_16_minus_pid <- update.formula(sorting_plus_controls_16, ~ . - rep - ind - pid7_str)
-default_controls_minus_pid <- update.formula(default_controls, ~ . - rep - ind - pid7_str)
-default_controls_16_minus_pid <- update.formula(default_controls, ~ . - rep - ind - pid7_str)
+# on PID subsets, ideo is effectively just sorting
+sorting_plus_controls_minus_pid <- update.formula(sorting_plus_controls, ~ . - rep - ind - pid7_str - ideo)
+sorting_plus_controls_minus_pid_supp <- update.formula(sorting_plus_controls_supp, ~ . - rep - ind - pid7_str)
+
+sorting_plus_controls_16_minus_pid <- update.formula(sorting_plus_controls_16, ~ . - rep - ind - pid7_str - ideo)
+sorting_plus_controls_16_minus_pid_supp <- update.formula(sorting_plus_controls_16_supp, ~ . - rep - ind - pid7_str)
+
+default_controls_minus_pid <- update.formula(default_controls, ~ . - rep - ind - pid7_str - ideo)
+default_controls_minus_pid_supp <- update.formula(default_controls_supp, ~ . - rep - ind - pid7_str)
+
+default_controls_16_minus_pid <- update.formula(default_controls, ~ . - rep - ind - pid7_str - ideo)
+default_controls_16_minus_pid_supp <- update.formula(default_controls_supp, ~ . - rep - ind - pid7_str )
 
 sorting_formula <- update.formula(default_controls, sorting_r ~ .)
 sorting_formula_16 <- update.formula(default_controls_16, sorting_r ~ .)
+sorting_formula_supp <- update.formula(default_controls_supp, sorting_r ~ .)
+sorting_formula_16_supp <- update.formula(default_controls_16_supp, sorting_r ~ .)
 
 sorting_formula_minus_pid <- update.formula(sorting_formula, ~ . - rep - ind - pid7_str - ideo)
 sorting_formula_16_minus_pid <- update.formula(sorting_formula_16, ~ . - rep - ind - pid7_str - ideo)
+sorting_formula_minus_pid_supp <- update.formula(sorting_formula, ~ . - rep - ind - pid7_str )
+sorting_formula_16_minus_pid_supp <- update.formula(sorting_formula_16, ~ . - rep - ind - pid7_str)
 
 sorting_formula_disaggregate_media <- update.formula(sorting_formula,
   ~ . - news_fox - news_msnbc - news_cnn + hannity + tucker + the_five +
@@ -1086,80 +1105,83 @@ models_to_table(spec,
 
 # Plots -------------------------------------------------------------------
 
-m1 <- lm_robust(sorting_formula_16, data=anes16, weights = anes16$weight) |> tidy() |> mutate(model="All")
-m2 <- lm_robust(sorting_formula_16_minus_pid, data=anes16_dem, weights = anes16_dem$weight) |> tidy() |> mutate(model="Democrats")
-m3 <- lm_robust(sorting_formula_16_minus_pid, data=anes16_ind, weights = anes16_ind$weight) |> tidy() |> mutate(model="Independents")
-m4 <- lm_robust(sorting_formula_16_minus_pid, data=anes16_rep, weights = anes16_rep$weight) |> tidy() |> mutate(model="Republicans")
+make_predictors_plot <- function(spec, title) {
+  caption <- "Plot shows estimated relationship with sorting, where 0 indicates perfectly unsorted and 1 indicates perfectly sorted.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
 
+  models = map_df(spec, ~lm_robust(.$formula, data=.$data, weights=.$data$weight) |>
+                    tidy() |>
+                    mutate(model = .$label)) |>
+    tibble() |>
+    mutate(term = as.factor(term) |> fct_relabel(~COEFRENAMER[.x]) |> fct_relevel(COEFRENAMER) |> fct_rev(),
+           star = as.integer(p.value < 0.05)) |>
+    mutate(hypothesis = case_when(term == "Female" ~ "Gender",
+                                  term == "White" ~ "Race",
+                                  term %in% c("TV-CNN", "TV-MSNBC", "TV-Fox") ~ "Media",
+                                  term %in% c("Republican", "Independent") ~ "Party",
+                                  TRUE ~ NA_character_))
 
-t1 <- bind_rows(m1, m2, m3, m4) |> tibble () |>
-  mutate(term = as.factor(term) |> fct_relabel(~COEFRENAMER[.x]) |> fct_relevel(COEFRENAMER) |> fct_rev(),
-  star = as.integer(p.value < 0.05)) |>
-  mutate(hypothesis = case_when(term == "Female" ~ "Gender",
-                                term == "White" ~ "Race",
-                                term %in% c("TV-CNN", "TV-MSNBC", "TV-Fox") ~ "Media",
-                                term %in% c("Republican", "Independent") ~ "Party",
-                                TRUE ~ NA_character_))
+  p <- ggplot(filter(models, term!="Intercept"), aes(x=term, alpha = star, color=hypothesis)) +
+    geom_point(aes(y = estimate), size=2) +
+    geom_linerange(aes(ymin=conf.low, ymax=conf.high)) +
+    coord_flip(ylim = c(-0.25, 0.25)) +
+    geom_hline(yintercept=0, linetype="dashed") +
+    theme_bw() +
+    labs(x="Term",
+         y="Coefficient",
+         title=title,
+         caption = caption,
+         color = "Hypotheses") +
+    guides(alpha="none") +
+    scale_alpha_continuous(range = c(0.25, 1)) +
+    scale_color_brewer(type = "qual", palette = 6, na.value="gray50") +
+    facet_wrap(vars(model), nrow = 1) +
+    theme(text = element_text(size=16),
+          plot.caption = element_text(size=12))
 
+  return(p)
+}
 
-caption <- "Plot shows estimated relationship with sorting, where 0 indicates perfectly unsorted and 1 indicates perfectly sorted.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
-p1 <- ggplot(filter(t1, term!="Intercept"), aes(x=term, alpha = star, color=hypothesis)) +
-  geom_point(aes(y = estimate), size=2) +
-  geom_linerange(aes(ymin=conf.low, ymax=conf.high)) +
-  coord_flip(ylim = c(-0.25, 0.25)) +
-  geom_hline(yintercept=0, linetype="dashed") +
-  theme_bw() +
-  labs(x="Term",
-       y="Coefficient",
-       title="Predictors of party-ideology sorting, 2016 ANES",
-       caption = caption,
-       color = "Hypotheses") +
-  guides(alpha="none") +
-  scale_alpha_continuous(range = c(0.25, 1)) +
-  scale_color_brewer(type = "qual", palette = 6, na.value="gray50") +
-  facet_wrap(vars(model), nrow = 1) +
-  theme(text = element_text(size=16),
-        plot.caption = element_text(size=12))
+spec <- list(
+  "All" = list(formula = sorting_formula_16, data = anes16, label = "All"),
+  "Democrats" = list(formula = sorting_formula_16_minus_pid, data = anes16_dem, label = "Democrats"),
+  "Independents" = list(formula = sorting_formula_16_minus_pid, data = anes16_ind, label = "Independents"),
+  "Republicans" = list(formula = sorting_formula_16_minus_pid, data = anes16_rep, label = "Republicans")
+)
+p1 <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2016 ANES")
 
-ggsave("results/figures/sorting_predictors_2016.png", plot=p1, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2016.pdf", plot=p1, dpi=400, width=16, height=9, units="in")
+spec <- list(
+  "All" = list(formula = sorting_formula_16_supp, data = anes16, label = "All"),
+  "Democrats" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_dem, label = "Democrats"),
+  "Independents" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_ind, label = "Independents"),
+  "Republicans" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_rep, label = "Republicans")
+)
+p1_supp <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2016 ANES")
 
-m1 <- lm_robust(sorting_formula, data=anes20, weights = anes20$weight)  |> tidy() |> mutate(model="All")
-m2 <- lm_robust(sorting_formula_minus_pid, data=anes20_dem, weights = anes20_dem$weight) |> tidy() |> mutate(model="Democrats")
-m3 <- lm_robust(sorting_formula_minus_pid, data=anes20_ind, weights = anes20_ind$weight) |> tidy() |> mutate(model="Independents")
-m4 <- lm_robust(sorting_formula_minus_pid, data=anes20_rep, weights = anes20_rep$weight) |> tidy() |> mutate(model="Republicans")
+spec <- list(
+  "All" = list(formula = sorting_formula_supp, data = anes20, label = "All"),
+  "Democrats" = list(formula = sorting_formula_minus_pid, data = anes20_dem, label = "Democrats"),
+  "Independents" = list(formula = sorting_formula_minus_pid, data = anes20_ind, label = "Independents"),
+  "Republicans" = list(formula = sorting_formula_minus_pid, data = anes20_rep, label = "Republicans")
+)
+p2 <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2020 ANES")
 
+spec <- list(
+  "All" = list(formula = sorting_formula_16_supp, data = anes16, label = "All"),
+  "Democrats" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_dem, label = "Democrats"),
+  "Independents" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_ind, label = "Independents"),
+  "Republicans" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_rep, label = "Republicans")
+)
+p2_supp <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2020 ANES")
 
-t2 <- bind_rows(m1, m2, m3, m4) |> tibble()|>
-  mutate(term = as.factor(term) |> fct_relabel(~COEFRENAMER[.x]) |> fct_relevel(COEFRENAMER) |> fct_rev(),
-  star = as.integer(p.value < 0.05)) |>
-  mutate(hypothesis = case_when(term == "Female" ~ "Gender",
-                                term == "White" ~ "Race",
-                                term %in% c("TV-CNN", "TV-MSNBC", "TV-Fox") ~ "Media",
-                                term %in% c("Republican", "Independent") ~ "Party",
-                                TRUE ~ NA_character_))
+ggsave("results/figures/sorting_predictors_2016.pdf", plot = p1, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2016.pdf", plot = p1, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2016_supp.pdf", plot = p1_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2016_supp.pdf", plot = p1_supp, dpi=400, width=16, height=9, units="in")
 
-
-p2 <- ggplot(filter(t2, term!="Intercept"), aes(x=term, color=hypothesis)) +
-  geom_point(aes(y = estimate, alpha = star)) +
-  geom_linerange(aes(ymin=conf.low, ymax=conf.high, alpha=star)) +
-  coord_flip(ylim = c(-0.25, 0.25)) +
-  geom_hline(yintercept=0, linetype="dashed") +
-  theme_bw() +
-  labs(x="Term",
-       y="Coefficient",
-       title="Predictors of party-ideology sorting, 2020 ANES",
-       color="Hypotheses",
-       caption = caption) +
-  guides(alpha="none") +
-  scale_alpha_continuous(range = c(0.25, 1)) +
-  scale_color_brewer(type = "qual", palette = 6, na.value="gray50") +
-  facet_wrap(vars(model), nrow = 1) +
-  theme(text = element_text(size=16),
-        plot.caption = element_text(size=12))
-
-ggsave("results/figures/sorting_predictors_2020.png", plot = p2, dpi=400, width=16, height=9, units="in")
 ggsave("results/figures/sorting_predictors_2020.pdf", plot = p2, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020.pdf", plot = p2, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=400, width=16, height=9, units="in")
 
 
 spec <- list(
