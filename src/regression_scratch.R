@@ -1180,6 +1180,53 @@ ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=4
 ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=400, width=16, height=9, units="in")
 
 
+make_effects_plot <- function(spec, title) {
+  r <- lapply(spec,
+              \(x) (x$fun(x$formula, data=x$data, weights=x$data$weight) |>
+                      tidy() |>
+                      tibble() |>
+                      filter(term == "sorting_r"))) |>
+    bind_rows() |>
+    mutate(outcome = as.factor(outcome) |>
+             fct_relabel(~COEFRENAMER[.x]) |>
+             fct_relevel(COEFRENAMER) |>
+             fct_rev())
+  # TODO: don't hard-code these
+  if (dim(r)[1] == 36) {
+    r$hypothesis <- rep(c(rep("Democratic Norms", 7), rep("Participation and Affect", 2)), 4)
+    r$facet <- c(rep("All", 9), rep("Democrats", 9), rep("Independents", 9), rep("Republicans", 9))
+  } else if (dim(r)[1] == 28){
+    r$hypothesis <- rep(c(rep("Democratic Norms", 5), rep("Participation and Affect", 2)), 4)
+    r$facet <- c(rep("All", 7), rep("Democrats", 7), rep("Independents", 7), rep("Republicans", 7))
+  }
+
+  r <- filter(r, facet != "Independents")
+
+  caption <- "Plot shows estimated relationship with sorting for each DV.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
+  p <- ggplot(r, aes(x=outcome, y=estimate, ymin=conf.low, color=hypothesis,
+                     ymax=conf.high, alpha = if_else(p.value < 0.05, 1, 0))) +
+    geom_point(size=4) +
+    geom_linerange(linewidth=1.5) +
+    coord_flip() +
+    theme_bw() +
+    scale_alpha_continuous(range=c(0.25, 1),
+                           guide="none") +
+    geom_hline(yintercept=0, linetype="dashed") +
+    scale_color_brewer(type="qual", palette=6) +
+    labs(
+      y="Coefficient",
+      x="Outcome",
+      title=title,
+      color="Hypotheses",
+      caption=caption
+    ) +
+    theme(text = element_text(size=16),
+          plot.caption = element_text(size=12)) +
+    facet_wrap(vars(facet))
+
+  return(p)
+}
+
 spec <- list(
   "Dissatisfaction with democracy" = list(
     formula = update.formula(sorting_plus_controls, dem1 ~ .),
@@ -1218,44 +1265,26 @@ spec <- list(
     data = anes20 |> mutate(ftdifference = ftdifference/100),
     fun = lm_robust)
 )
+big_spec <- c(spec,
+              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))))
 
-r <- lapply(spec,
-  \(x) (x$fun(x$formula, data=x$data, weights=x$data$weight) |>
-          tidy() |>
-          tibble() |>
-          filter(term == "sorting_r"))) |>
-  bind_rows() |>
-  mutate(outcome = as.factor(outcome) |>
-           fct_relabel(~COEFRENAMER[.x]) |>
-           fct_relevel(COEFRENAMER) |>
-           fct_rev())
-# TODO: don't hard-code these
-r$hypothesis <- c(rep("Democratic Norms", 7), rep("Participation and Affect", 2))
 
-caption <- "Plot shows estimated relationship with sorting for each DV.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
-p3 <- ggplot(r, aes(x=outcome, y=estimate, ymin=conf.low, color=hypothesis,
-                    ymax=conf.high, alpha = if_else(p.value < 0.05, 1, 0))) +
-  geom_point(size=4) +
-  geom_linerange(linewidth=1.5) +
-  coord_flip() +
-  theme_bw() +
-  scale_alpha_continuous(range=c(0.25, 1),
-                         guide="none") +
-  geom_hline(yintercept=0, linetype="dashed") +
-  scale_color_brewer(type="qual", palette=6) +
-  labs(
-    y="Coefficient",
-    x="Outcome",
-    title="Outcomes predicted by party-ideology sorting, 2020 ANES",
-    color="Hypotheses",
-    caption=caption
-  ) +
-  theme(text = element_text(size=16),
-        plot.caption = element_text(size=12))
+p3 <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2020 ANES")
+
+# TODO: double-check terms
+big_spec <- c(lapply(spec, \(x) list(data=x$data, fun=x$fun, formula=update.formula(x[['formula']],  ~ . + pid7_str + ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))),
+              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str))),
+              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))))
+
+p3_supp <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2020 ANES")
 
 ggsave("results/figures/sorting_outcomes_2020.png", plot = p3, dpi=400, width=16, height=9, units="in")
 ggsave("results/figures/sorting_outcomes_2020.pdf", plot = p3, dpi=400, width=16, height=9, units="in")
-
+ggsave("results/figures/sorting_outcomes_2020_supp.png", plot = p3_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2020_supp.pdf", plot = p3_supp, dpi=400, width=16, height=9, units="in")
 
 spec <- list(
   "Dissatisfaction with democracy" = list(
@@ -1287,41 +1316,26 @@ spec <- list(
     data = anes16 |> mutate(ftdifference = ftdifference/100),
     fun = lm_robust)
 )
-r <- lapply(spec,
-            \(x) (x$fun(x$formula, data=x$data, weights=x$data$weight) |>
-                    tidy() |>
-                    tibble() |>
-                    filter(term == "sorting_r"))) |>
-  bind_rows() |>
-  mutate(outcome = as.factor(outcome) |>
-           fct_relabel(~COEFRENAMER[.x]) |>
-           fct_relevel(COEFRENAMER) |>
-           fct_rev())
-# TODO: don't hard-code these
-r$hypothesis <- c(rep("Democratic Norms", 5), rep("Participation and Affect", 2))
+big_spec <- c(spec,
+              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))))
 
-p4 <- ggplot(r, aes(x=outcome, y=estimate, color = hypothesis,
-                    ymin=conf.low, ymax=conf.high, alpha = if_else(p.value < 0.05, 1, 0))) +
-  geom_point(size=4) +
-  geom_linerange(linewidth=1.5) +
-  coord_flip() +
-  theme_bw() +
-  scale_alpha_continuous(range=c(0.25, 1),
-                         guide="none") +
-  scale_color_brewer(type="qual", palette=6) +
-  geom_hline(yintercept=0, linetype="dashed") +
-  labs(
-    y="Coefficient",
-    x="Outcome",
-    title="Outcomes predicted by party-ideology sorting, 2016 ANES",
-    color="Hypotheses",
-    caption= caption
-  ) +
-  theme(text = element_text(size=16),
-        plot.caption = element_text(size=12))
+
+p4 <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2016 ANES")
+
+# TODO: double-check terms
+big_spec <- c(lapply(spec, \(x) list(data=x$data, fun=x$fun, formula=update.formula(x[['formula']],  ~ . + pid7_str + ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))),
+              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str))),
+              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))))
+
+p4_supp <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2016 ANES")
 
 ggsave("results/figures/sorting_outcomes_2016.png", plot = p4, dpi=400, width=16, height=9, units="in")
 ggsave("results/figures/sorting_outcomes_2016.pdf", plot = p4, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2016_supp.png", plot = p4_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2016_supp.pdf", plot = p4_supp, dpi=400, width=16, height=9, units="in")
 
 p5 <- bind_rows(
   select(anes20, sorting_r) |>
