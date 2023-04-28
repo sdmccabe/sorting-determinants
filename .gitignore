@@ -41,7 +41,6 @@ vignettes/*.pdf
 # anything modelsummary could output
 *.html
 *.png
-*.pdf
 *.aux
 *.blg
 *.fdb_latexmk
@@ -65,3 +64,4 @@ vignettes/*.pdf
 *.xdv
 *.lof
 .DS_Store
+*.toc

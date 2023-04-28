@@ -31,6 +31,7 @@
 
 \begin{document}
 %\begin{landscape}
+\tableofcontents
 \listoffigures
 \listoftables
 \clearpage
@@ -45,8 +46,36 @@ Terms that the LASSO model has regularized out are represented with a `---'.
 (If a term in the LASSO model is zero, that means that it was not penalized out---it has some predictive accuracy when included---but its coeffcient is zero or very close to zero.)
 
 In general, the OLS and LASSO models are quite similar; the McFadden pseudo-\(R^2\) of the LASSO models is often comparable to the adjusted \(R^2\) of the OLS models, and terms that are statistically significant in the OLS models tend to be the terms not excluded by the LASSO models. 
-
 \clearpage
+
+\section{Originating regressions for Figure 1}
+\input{../tables/tex/fig1_table.tex}
+\clearpage
+
+\section{Originating regressions for Figure 2}
+\input{../tables/tex/fig2_table.tex}
+\clearpage
+
+\section{Originating regressions for Figure 3}
+\input{../tables/tex/fig3_full_sample.tex}
+\clearpage
+\input{../tables/tex/fig3_dem_sample.tex}
+\clearpage
+\input{../tables/tex/fig3_ind_sample.tex}
+\clearpage
+\input{../tables/tex/fig3_rep_sample.tex}
+\clearpage
+
+\section{Originating regressions for Figure 4}
+\input{../tables/tex/fig4_full_sample.tex}
+\clearpage
+\input{../tables/tex/fig4_dem_sample.tex}
+\clearpage
+\input{../tables/tex/fig4_ind_sample.tex}
+\clearpage
+\input{../tables/tex/fig4_rep_sample.tex}
+\clearpage
+
 \section{Changes in Sorting Over Time}
 The analyses presented in the main text indicate a connection between party-ideology sorting and affective polarization and participation; at the same time, we find no evidence of a link between sorting and attitudes about democracy.
 However, the data we have used are all observational and cross-sectional. 
@@ -65,7 +94,7 @@ We take this as confirmatory evidence of the analyses presented in the main text
 
 
 \clearpage
-\section{Supplementary Figures}
+\section{Histograms of partisan-ideological sorting}
 
 \begin{figure}[h]
     \centering
@@ -75,8 +104,64 @@ We take this as confirmatory evidence of the analyses presented in the main text
 \end{figure}
 
 \clearpage
-\section{Supplementary Tables}
+\section{Alernate model specifications}
 
+FILL IN
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../figures/sorting_predictors_2016_supp.pdf}
+    \caption{Alternate model specification for Figure 1.}
+    \label{fig:sorting_predictors_2016_supp}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../figures/sorting_predictors_2020_supp.pdf}
+    \caption{Alternate model specification for Figure 2.}
+    \label{fig:sorting_predictors_2020_supp}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../figures/sorting_outcomes_2016_supp.pdf}
+    \caption{Alternate model specification for Figure 3.}
+    \label{fig:sorting_outcomes_2016_supp}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../figures/sorting_outcomes_2020_supp.pdf}
+    \caption{Alternate model specification for Figure 4.}
+    \label{fig:sorting_outcomes_2020_supp}
+\end{figure}
+
+\input{../tables/tex/fig1_supp_table.tex}
+\clearpage
+
+\input{../tables/tex/fig2_supp_table.tex}
+\clearpage
+
+\input{../tables/tex/fig3_full_sample_supp.tex}
+\clearpage
+\input{../tables/tex/fig3_dem_sample_supp.tex}
+\clearpage
+\input{../tables/tex/fig3_ind_sample_supp.tex}
+\clearpage
+\input{../tables/tex/fig3_rep_sample_supp.tex}
+\clearpage
+
+\input{../tables/tex/fig4_full_sample_supp.tex}
+\clearpage
+\input{../tables/tex/fig4_dem_sample_supp.tex}
+\clearpage
+\input{../tables/tex/fig4_ind_sample_supp.tex}
+\clearpage
+\input{../tables/tex/fig4_rep_sample_supp.tex}
+\clearpage
+
+
+\section{Supplementary Tables}
 
 \input{../tables/tex/a1.tex}
 \clearpage
