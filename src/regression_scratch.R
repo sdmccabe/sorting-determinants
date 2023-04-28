@@ -939,7 +939,7 @@ spec <- list(
     fun = lm_robust),
   "Affective polarization" = list(
     formula = update.formula(change_formula, ftdifference_2020 ~ .),
-    data = panel,
+    data = panel |> mutate_at(vars(starts_with("ftdifference_")), \(x) x/100),
     fun = lm_robust)
 )
 
