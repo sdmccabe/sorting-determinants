@@ -346,13 +346,13 @@ spec <- list(
 
 models_to_table(spec,
                 output="results/tables/tex/a4.tex",
-                title="Effects of sorting, models behind Figure 4 (2020) (OLS)")
+                title="Outcomes predicted by sorting (2020) (OLS)")
 
 # replace OLS with lasso_new for alternate table
 spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
 models_to_table(spec,
                 output="results/tables/tex/a4_lasso.tex",
-                title="Effects of sorting, models behind Figure 4 (2020) (LASSO)")
+                title="Outcomes predicted by sorting (2020) (LASSO)")
 
 spec <- list(
   "Dissatisfaction with Democracy" = list(
@@ -387,13 +387,13 @@ spec <- list(
 
 models_to_table(spec,
                 output="results/tables/tex/a4_16.tex",
-                title="Effects of sorting, models behind Figure 4 (2016) (OLS)")
+                title="Outcomes predicted by sorting (2016) (OLS)")
 
 # replace OLS with lasso_new for alternate table
 spec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
 models_to_table(spec,
                 output="results/tables/tex/a4_lasso_16.tex",
-                title="Effects of sorting, models behind Figure 4 (2016) (LASSO)")
+                title="Outcomes predicted by sorting (2016) (LASSO)")
 
 # Table A.1 ----------------------------------------------------------------
 
