@@ -209,6 +209,90 @@ models_to_table <- function(
   kableExtra::save_kable(k, output)
 }
 
+make_predictors_plot <- function(spec, title) {
+  caption <- "Plot shows estimated relationship with sorting, where 0 indicates perfectly unsorted and 1 indicates perfectly sorted.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
+
+  models = map_df(spec, ~lm_robust(.$formula, data=.$data, weights=.$data$weight) |>
+                    tidy() |>
+                    mutate(model = .$label)) |>
+    tibble() |>
+    mutate(term = as.factor(term) |> fct_relabel(~COEFRENAMER[.x]) |> fct_relevel(COEFRENAMER) |> fct_rev(),
+           star = as.integer(p.value < 0.05)) |>
+    mutate(hypothesis = case_when(term == "Female" ~ "Gender",
+                                  term == "White" ~ "Race",
+                                  term %in% c("TV-CNN", "TV-MSNBC", "TV-Fox") ~ "Media",
+                                  term %in% c("Republican", "Independent") ~ "Party",
+                                  TRUE ~ NA_character_))
+
+  p <- ggplot(filter(models, term!="Intercept"), aes(x=term, alpha = star, color=hypothesis)) +
+    geom_point(aes(y = estimate), size=2) +
+    geom_linerange(aes(ymin=conf.low, ymax=conf.high)) +
+    coord_flip(ylim = c(-0.25, 0.25)) +
+    geom_hline(yintercept=0, linetype="dashed") +
+    theme_bw() +
+    labs(x="Term",
+         y="Coefficient",
+         title=title,
+         caption = caption,
+         color = "Hypotheses") +
+    guides(alpha="none") +
+    scale_alpha_continuous(range = c(0.25, 1)) +
+    scale_color_brewer(type = "qual", palette = 6, na.value="gray50") +
+    facet_wrap(vars(model), nrow = 1) +
+    theme(text = element_text(size=16),
+          plot.caption = element_text(size=12))
+
+  return(p)
+}
+
+
+make_effects_plot <- function(spec, title) {
+  r <- lapply(spec,
+              \(x) (x$fun(x$formula, data=x$data, weights=x$data$weight) |>
+                      tidy() |>
+                      tibble() |>
+                      filter(term == "sorting_r"))) |>
+    bind_rows() |>
+    mutate(outcome = as.factor(outcome) |>
+             fct_relabel(~COEFRENAMER[.x]) |>
+             fct_relevel(COEFRENAMER) |>
+             fct_rev())
+  # TODO: don't hard-code these
+  if (dim(r)[1] == 36) {
+    r$hypothesis <- rep(c(rep("Democratic Norms", 7), rep("Participation and Affect", 2)), 4)
+    r$facet <- c(rep("All", 9), rep("Democrats", 9), rep("Independents", 9), rep("Republicans", 9))
+  } else if (dim(r)[1] == 28){
+    r$hypothesis <- rep(c(rep("Democratic Norms", 5), rep("Participation and Affect", 2)), 4)
+    r$facet <- c(rep("All", 7), rep("Democrats", 7), rep("Independents", 7), rep("Republicans", 7))
+  }
+
+  r <- filter(r, facet != "Independents")
+
+  caption <- "Plot shows estimated relationship with sorting for each DV.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
+  p <- ggplot(r, aes(x=outcome, y=estimate, ymin=conf.low, color=hypothesis,
+                     ymax=conf.high, alpha = if_else(p.value < 0.05, 1, 0))) +
+    geom_point(size=4) +
+    geom_linerange(linewidth=1.5) +
+    coord_flip() +
+    theme_bw() +
+    scale_alpha_continuous(range=c(0.25, 1),
+                           guide="none") +
+    geom_hline(yintercept=0, linetype="dashed") +
+    scale_color_brewer(type="qual", palette=6) +
+    labs(
+      y="Coefficient",
+      x="Outcome",
+      title=title,
+      color="Hypotheses",
+      caption=caption
+    ) +
+    theme(text = element_text(size=16),
+          plot.caption = element_text(size=12)) +
+    facet_wrap(vars(facet))
+
+  return(p)
+}
+
 
 # Data loading and preprocessing ------------------------------------------
 
@@ -299,6 +383,264 @@ sorting_formula_disaggregate_media_minus_pid <-
 
 sorting_formula_disaggregate_media_16_minus_pid <-
   update.formula(sorting_formula_disaggregate_media_16, ~ . - rep - ind - pid7_str - ideo)
+
+
+# Figure 1 ----------------------------------------------------------------
+
+# NOTE: the inputs for the plotting and table functions are annoyingly close but
+#       incompatible
+tablespec <- list(
+  "All" = list(formula = sorting_formula_16, data = anes16, fun = lm_robust),
+  "Democrats" = list(formula = sorting_formula_16_minus_pid, data = anes16_dem, fun = lm_robust),
+  "Independents" = list(formula = sorting_formula_16_minus_pid, data = anes16_ind, fun = lm_robust),
+  "Republicans" = list(formula = sorting_formula_16_minus_pid, data = anes16_rep, fun = lm_robust)
+)
+models_to_table(tablespec,
+                output="results/tables/tex/fig1_table.tex",
+                title="Detailed results predicting sorting (2016)")
+
+plotspec <- list(
+  "All" = list(formula = sorting_formula_16, data = anes16, label = "All"),
+  "Democrats" = list(formula = sorting_formula_16_minus_pid, data = anes16_dem, label = "Democrats"),
+  "Republicans" = list(formula = sorting_formula_16_minus_pid, data = anes16_rep, label = "Republicans")
+)
+p1 <- make_predictors_plot(plotspec, "Predictors of party-ideology sorting, 2016 ANES")
+
+tablespec <- list(
+  "All" = list(formula = sorting_formula_16_supp, data = anes16, fun = lm_robust),
+  "Democrats" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_dem, fun = lm_robust),
+  "Independents" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_ind, fun = lm_robust),
+  "Republicans" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_rep, fun = lm_robust)
+)
+models_to_table(tablespec,
+                output="results/tables/tex/fig1_supp_table.tex",
+                title="Detailed results predicting sorting, alternate specification (2016)")
+
+plotspec <- list(
+  "All" = list(formula = sorting_formula_16_supp, data = anes16, label = "All"),
+  "Democrats" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_dem, label = "Democrats"),
+  "Republicans" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_rep, label = "Republicans")
+)
+p1_supp <- make_predictors_plot(plotspec, "Predictors of party-ideology sorting, 2016 ANES")
+
+ggsave("results/figures/sorting_predictors_2016.pdf", plot = p1, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2016.pdf", plot = p1, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2016_supp.pdf", plot = p1_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2016_supp.pdf", plot = p1_supp, dpi=400, width=16, height=9, units="in")
+
+# Figure 2 ----------------------------------------------------------------
+
+# NOTE: the inputs for the plotting and table functions are annoyingly close but
+#       incompatible
+tablespec <- list(
+  "All" = list(formula = sorting_formula, data = anes20, fun = lm_robust),
+  "Democrats" = list(formula = sorting_formula_minus_pid, data = anes20_dem, fun = lm_robust),
+  "Independents" = list(formula = sorting_formula_minus_pid, data = anes20_ind, fun = lm_robust),
+  "Republicans" = list(formula = sorting_formula_minus_pid, data = anes20_rep, fun = lm_robust)
+)
+models_to_table(tablespec,
+                output="results/tables/tex/fig2_table.tex",
+                title="Detailed results predicting sorting (2020)")
+
+plotspec <- list(
+  "All" = list(formula = sorting_formula, data = anes20, label = "All"),
+  "Democrats" = list(formula = sorting_formula_minus_pid, data = anes20_dem, label = "Democrats"),
+  "Republicans" = list(formula = sorting_formula_minus_pid, data = anes20_rep, label = "Republicans")
+)
+p2 <- make_predictors_plot(plotspec, "Predictors of party-ideology sorting, 2020 ANES")
+
+tablespec <- list(
+  "All" = list(formula = sorting_formula_supp, data = anes20, fun = lm_robust),
+  "Democrats" = list(formula = sorting_formula_minus_pid_supp, data = anes20_dem, fun = lm_robust),
+  "Independents" = list(formula = sorting_formula_minus_pid_supp, data = anes20_ind, fun = lm_robust),
+  "Republicans" = list(formula = sorting_formula_minus_pid_supp, data = anes20_rep, fun = lm_robust)
+)
+models_to_table(tablespec,
+                output="results/tables/tex/fig2_supp_table.tex",
+                title="Detailed results predicting sorting, alternate specification (2020)")
+
+plotspec <- list(
+  "All" = list(formula = sorting_formula_supp, data = anes20, label = "All"),
+  "Democrats" = list(formula = sorting_formula_minus_pid_supp, data = anes20_dem, label = "Democrats"),
+  "Republicans" = list(formula = sorting_formula_minus_pid_supp, data = anes20_rep, label = "Republicans")
+)
+p2_supp <- make_predictors_plot(plotspec, "Predictors of party-ideology sorting, 2016 ANES")
+
+ggsave("results/figures/sorting_predictors_2020.pdf", plot = p2, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020.pdf", plot = p2, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=400, width=16, height=9, units="in")
+
+
+# Figure 3 ----------------------------------------------------------------
+
+spec <- list(
+  "Dissatisfaction with democracy" = list(
+    formula = update.formula(sorting_plus_controls_16, dem1 ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Support for political violence" = list(
+    formula = update.formula(sorting_plus_controls_16, vio_justy ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Skeptical of election integrity" = list(
+    formula = update.formula(sorting_plus_controls_16, fairelec ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Compromise is selling out" = list(
+    formula = update.formula(sorting_plus_controls_16, comp1.1 ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Prefer leader sticks to principles" = list(
+    formula = update.formula(sorting_plus_controls_16, comp2.1 ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Participation" = list(
+    formula = update.formula(sorting_plus_controls_16, MASONINDEX1 ~ .),
+    data = anes16,
+    fun = lm_robust),
+  "Affective polarization" = list(
+    formula = update.formula(sorting_plus_controls_16, ftdifference ~ .),
+    data = anes16 |> mutate(ftdifference = ftdifference/100),
+    fun = lm_robust)
+)
+big_spec <- c(spec,
+              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))))
+
+
+p3 <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2016 ANES")
+models_to_table(spec,
+                output="results/tables/tex/fig3_full_sample.tex",
+                title="Outcomes predicted by party-ideology sorting, full sample (2016)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig3_dem_sample.tex",
+                title="Outcomes predicted by party-ideology sorting, Democrats (2016)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig3_ind_sample.tex",
+                title="Outcomes predicted by party-ideology sorting, Independents (2016)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig3_rep_sample.tex",
+                title="Outcomes predicted by party-ideology sorting, Republicans (2016)")
+
+# TODO: double-check terms
+spec <- lapply(spec, \(x) list(data=x$data, fun=x$fun, formula=update.formula(x[['formula']],  ~ . + pid7_str + ideo)))
+big_spec <- c(spec,
+              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))),
+              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str))),
+              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))))
+
+p3_supp <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2016 ANES")
+models_to_table(spec,
+                output="results/tables/tex/fig3_full_sample_supp.tex",
+                title="Outcomes predicted by party-ideology sorting, alternate specification, full sample (2016)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig3_dem_sample_supp.tex",
+                title="Outcomes predicted by party-ideology sorting, alternate specification, Democrats (2016)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig3_ind_sample_supp.tex",
+                title="Outcomes predicted by party-ideology sorting, alternate specification, Independents (2016)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig3_rep_sample_supp.tex",
+                title="Outcomes predicted by party-ideology sorting, alternate specification, Republicans (2016)")
+
+ggsave("results/figures/sorting_outcomes_2016.png", plot = p3, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2016.pdf", plot = p3, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2016_supp.png", plot = p3_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2016_supp.pdf", plot = p3_supp, dpi=400, width=16, height=9, units="in")
+
+
+# Figure 4 ----------------------------------------------------------------
+
+spec <- list(
+  "Dissatisfaction with democracy" = list(
+    formula = update.formula(sorting_plus_controls, dem1 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Checks and balances aren't important" = list(
+    formula = update.formula(sorting_plus_controls, dem2 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Helpful if president could act alone" = list(
+    formula = update.formula(sorting_plus_controls, dem3 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Support for political violence" = list(
+    formula = update.formula(sorting_plus_controls, vio_justy ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Skeptical of election integrity" = list(
+    formula = update.formula(sorting_plus_controls, fairelec ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Compromise is selling out" = list(
+    formula = update.formula(sorting_plus_controls, comp1.1 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Prefer leader sticks to principles" = list(
+    formula = update.formula(sorting_plus_controls, comp2.1 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Participation" = list(
+    formula = update.formula(sorting_plus_controls, MASONINDEX1 ~ .),
+    data = anes20,
+    fun = lm_robust),
+  "Affective polarization" = list(
+    formula = update.formula(sorting_plus_controls, ftdifference ~ .),
+    data = anes20 |> mutate(ftdifference = ftdifference/100),
+    fun = lm_robust)
+)
+big_spec <- c(spec,
+              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))))
+
+
+p4 <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2020 ANES")
+models_to_table(spec,
+                output="results/tables/tex/fig4_full_sample.tex",
+                title="Outcomes predicted by party-ideology sorting, full sample (2020)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig4_dem_sample.tex",
+                title="Outcomes predicted by party-ideology sorting, Democrats (2020)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig4_ind_sample.tex",
+                title="Outcomes predicted by party-ideology sorting, Independents (2020)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig4_rep_sample.tex",
+                title="Outcomes predicted by party-ideology sorting, Republicans (2020)")
+
+# TODO: double-check terms
+spec <- lapply(spec, \(x) list(data=x$data, fun=x$fun, formula=update.formula(x[['formula']],  ~ . + pid7_str + ideo)))
+big_spec <- c(spec,
+              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))),
+              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str))),
+              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))))
+
+p4_supp <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2020 ANES")
+models_to_table(spec,
+                output="results/tables/tex/fig4_full_sample_supp.tex",
+                title="Outcomes predicted by party-ideology sorting, alternate specification, full sample (2020)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig4_dem_sample_supp.tex",
+                title="Outcomes predicted by party-ideology sorting, alternate specification, Democrats (2020)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig4_ind_sample_supp.tex",
+                title="Outcomes predicted by party-ideology sorting, alternate specification, Independents (2020)")
+models_to_table(lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig4_rep_sample_supp.tex",
+                title="Outcomes predicted by party-ideology sorting, alternate specification, Republicans (2020)")
+
+ggsave("results/figures/sorting_outcomes_2020.png", plot = p4, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2020.pdf", plot = p4, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2020_supp.png", plot = p4_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_outcomes_2020_supp.pdf", plot = p4_supp, dpi=400, width=16, height=9, units="in")
+
+
+
+
+
 
 # Table A.4 -----------------------------------------------------------------
 
@@ -1104,238 +1446,6 @@ models_to_table(spec,
 
 
 # Plots -------------------------------------------------------------------
-
-make_predictors_plot <- function(spec, title) {
-  caption <- "Plot shows estimated relationship with sorting, where 0 indicates perfectly unsorted and 1 indicates perfectly sorted.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
-
-  models = map_df(spec, ~lm_robust(.$formula, data=.$data, weights=.$data$weight) |>
-                    tidy() |>
-                    mutate(model = .$label)) |>
-    tibble() |>
-    mutate(term = as.factor(term) |> fct_relabel(~COEFRENAMER[.x]) |> fct_relevel(COEFRENAMER) |> fct_rev(),
-           star = as.integer(p.value < 0.05)) |>
-    mutate(hypothesis = case_when(term == "Female" ~ "Gender",
-                                  term == "White" ~ "Race",
-                                  term %in% c("TV-CNN", "TV-MSNBC", "TV-Fox") ~ "Media",
-                                  term %in% c("Republican", "Independent") ~ "Party",
-                                  TRUE ~ NA_character_))
-
-  p <- ggplot(filter(models, term!="Intercept"), aes(x=term, alpha = star, color=hypothesis)) +
-    geom_point(aes(y = estimate), size=2) +
-    geom_linerange(aes(ymin=conf.low, ymax=conf.high)) +
-    coord_flip(ylim = c(-0.25, 0.25)) +
-    geom_hline(yintercept=0, linetype="dashed") +
-    theme_bw() +
-    labs(x="Term",
-         y="Coefficient",
-         title=title,
-         caption = caption,
-         color = "Hypotheses") +
-    guides(alpha="none") +
-    scale_alpha_continuous(range = c(0.25, 1)) +
-    scale_color_brewer(type = "qual", palette = 6, na.value="gray50") +
-    facet_wrap(vars(model), nrow = 1) +
-    theme(text = element_text(size=16),
-          plot.caption = element_text(size=12))
-
-  return(p)
-}
-
-spec <- list(
-  "All" = list(formula = sorting_formula_16, data = anes16, label = "All"),
-  "Democrats" = list(formula = sorting_formula_16_minus_pid, data = anes16_dem, label = "Democrats"),
-  "Republicans" = list(formula = sorting_formula_16_minus_pid, data = anes16_rep, label = "Republicans")
-)
-p1 <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2016 ANES")
-
-spec <- list(
-  "All" = list(formula = sorting_formula_16_supp, data = anes16, label = "All"),
-  "Democrats" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_dem, label = "Democrats"),
-  "Republicans" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_rep, label = "Republicans")
-)
-p1_supp <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2016 ANES")
-
-spec <- list(
-  "All" = list(formula = sorting_formula_supp, data = anes20, label = "All"),
-  "Democrats" = list(formula = sorting_formula_minus_pid, data = anes20_dem, label = "Democrats"),
-  "Republicans" = list(formula = sorting_formula_minus_pid, data = anes20_rep, label = "Republicans")
-)
-p2 <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2020 ANES")
-
-spec <- list(
-  "All" = list(formula = sorting_formula_16_supp, data = anes16, label = "All"),
-  "Democrats" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_dem, label = "Democrats"),
-  "Republicans" = list(formula = sorting_formula_16_minus_pid_supp, data = anes16_rep, label = "Republicans")
-)
-p2_supp <- make_predictors_plot(spec, "Predictors of party-ideology sorting, 2020 ANES")
-
-ggsave("results/figures/sorting_predictors_2016.pdf", plot = p1, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2016.pdf", plot = p1, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2016_supp.pdf", plot = p1_supp, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2016_supp.pdf", plot = p1_supp, dpi=400, width=16, height=9, units="in")
-
-ggsave("results/figures/sorting_predictors_2020.pdf", plot = p2, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2020.pdf", plot = p2, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=400, width=16, height=9, units="in")
-
-
-make_effects_plot <- function(spec, title) {
-  r <- lapply(spec,
-              \(x) (x$fun(x$formula, data=x$data, weights=x$data$weight) |>
-                      tidy() |>
-                      tibble() |>
-                      filter(term == "sorting_r"))) |>
-    bind_rows() |>
-    mutate(outcome = as.factor(outcome) |>
-             fct_relabel(~COEFRENAMER[.x]) |>
-             fct_relevel(COEFRENAMER) |>
-             fct_rev())
-  # TODO: don't hard-code these
-  if (dim(r)[1] == 36) {
-    r$hypothesis <- rep(c(rep("Democratic Norms", 7), rep("Participation and Affect", 2)), 4)
-    r$facet <- c(rep("All", 9), rep("Democrats", 9), rep("Independents", 9), rep("Republicans", 9))
-  } else if (dim(r)[1] == 28){
-    r$hypothesis <- rep(c(rep("Democratic Norms", 5), rep("Participation and Affect", 2)), 4)
-    r$facet <- c(rep("All", 7), rep("Democrats", 7), rep("Independents", 7), rep("Republicans", 7))
-  }
-
-  r <- filter(r, facet != "Independents")
-
-  caption <- "Plot shows estimated relationship with sorting for each DV.\nEstimates created with OLS regression, using robust standard errors, and are weighted with ANES weights.\nShaded coefficients are significant at 95% confidence; unshaded are not."
-  p <- ggplot(r, aes(x=outcome, y=estimate, ymin=conf.low, color=hypothesis,
-                     ymax=conf.high, alpha = if_else(p.value < 0.05, 1, 0))) +
-    geom_point(size=4) +
-    geom_linerange(linewidth=1.5) +
-    coord_flip() +
-    theme_bw() +
-    scale_alpha_continuous(range=c(0.25, 1),
-                           guide="none") +
-    geom_hline(yintercept=0, linetype="dashed") +
-    scale_color_brewer(type="qual", palette=6) +
-    labs(
-      y="Coefficient",
-      x="Outcome",
-      title=title,
-      color="Hypotheses",
-      caption=caption
-    ) +
-    theme(text = element_text(size=16),
-          plot.caption = element_text(size=12)) +
-    facet_wrap(vars(facet))
-
-  return(p)
-}
-
-spec <- list(
-  "Dissatisfaction with democracy" = list(
-    formula = update.formula(sorting_plus_controls, dem1 ~ .),
-    data = anes20,
-    fun = lm_robust),
-  "Checks and balances aren't important" = list(
-    formula = update.formula(sorting_plus_controls, dem2 ~ .),
-    data = anes20,
-    fun = lm_robust),
-  "Helpful if president could act alone" = list(
-    formula = update.formula(sorting_plus_controls, dem3 ~ .),
-    data = anes20,
-    fun = lm_robust),
-  "Support for political violence" = list(
-    formula = update.formula(sorting_plus_controls, vio_justy ~ .),
-    data = anes20,
-    fun = lm_robust),
-  "Skeptical of election integrity" = list(
-    formula = update.formula(sorting_plus_controls, fairelec ~ .),
-    data = anes20,
-    fun = lm_robust),
-  "Compromise is selling out" = list(
-    formula = update.formula(sorting_plus_controls, comp1.1 ~ .),
-    data = anes20,
-    fun = lm_robust),
-  "Prefer leader sticks to principles" = list(
-    formula = update.formula(sorting_plus_controls, comp2.1 ~ .),
-    data = anes20,
-    fun = lm_robust),
-  "Participation" = list(
-    formula = update.formula(sorting_plus_controls, MASONINDEX1 ~ .),
-    data = anes20,
-    fun = lm_robust),
-  "Affective polarization" = list(
-    formula = update.formula(sorting_plus_controls, ftdifference ~ .),
-    data = anes20 |> mutate(ftdifference = ftdifference/100),
-    fun = lm_robust)
-)
-big_spec <- c(spec,
-              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
-              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
-              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))))
-
-
-p3 <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2020 ANES")
-
-# TODO: double-check terms
-big_spec <- c(lapply(spec, \(x) list(data=x$data, fun=x$fun, formula=update.formula(x[['formula']],  ~ . + pid7_str + ideo))),
-              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))),
-              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str))),
-              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))))
-
-p3_supp <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2020 ANES")
-
-ggsave("results/figures/sorting_outcomes_2020.png", plot = p3, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_outcomes_2020.pdf", plot = p3, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_outcomes_2020_supp.png", plot = p3_supp, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_outcomes_2020_supp.pdf", plot = p3_supp, dpi=400, width=16, height=9, units="in")
-
-spec <- list(
-  "Dissatisfaction with democracy" = list(
-    formula = update.formula(sorting_plus_controls_16, dem1 ~ .),
-    data = anes16,
-    fun = lm_robust),
-  "Support for political violence" = list(
-    formula = update.formula(sorting_plus_controls_16, vio_justy ~ .),
-    data = anes16,
-    fun = lm_robust),
-  "Skeptical of election integrity" = list(
-    formula = update.formula(sorting_plus_controls_16, fairelec ~ .),
-    data = anes16,
-    fun = lm_robust),
-  "Compromise is selling out" = list(
-    formula = update.formula(sorting_plus_controls_16, comp1.1 ~ .),
-    data = anes16,
-    fun = lm_robust),
-  "Prefer leader sticks to principles" = list(
-    formula = update.formula(sorting_plus_controls_16, comp2.1 ~ .),
-    data = anes16,
-    fun = lm_robust),
-  "Participation" = list(
-    formula = update.formula(sorting_plus_controls_16, MASONINDEX1 ~ .),
-    data = anes16,
-    fun = lm_robust),
-  "Affective polarization" = list(
-    formula = update.formula(sorting_plus_controls_16, ftdifference ~ .),
-    data = anes16 |> mutate(ftdifference = ftdifference/100),
-    fun = lm_robust)
-)
-big_spec <- c(spec,
-              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
-              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
-              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))))
-
-
-p4 <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2016 ANES")
-
-# TODO: double-check terms
-big_spec <- c(lapply(spec, \(x) list(data=x$data, fun=x$fun, formula=update.formula(x[['formula']],  ~ . + pid7_str + ideo))),
-              lapply(spec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))),
-              lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str))),
-              lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str ))))
-
-p4_supp <- make_effects_plot(big_spec, "Outcomes predicted by party-ideology sorting, 2016 ANES")
-
-ggsave("results/figures/sorting_outcomes_2016.png", plot = p4, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_outcomes_2016.pdf", plot = p4, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_outcomes_2016_supp.png", plot = p4_supp, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_outcomes_2016_supp.pdf", plot = p4_supp, dpi=400, width=16, height=9, units="in")
 
 p5 <- bind_rows(
   select(anes20, sorting_r) |>
