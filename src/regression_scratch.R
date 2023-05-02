@@ -398,6 +398,10 @@ tablespec <- list(
 models_to_table(tablespec,
                 output="results/tables/tex/fig1_table.tex",
                 title="Detailed results predicting sorting (2016)")
+lasso_tablespec <- lapply(tablespec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
+models_to_table(tablespec,
+                output="results/tables/tex/fig1_table_lasso.tex",
+                title="LASSO model results predicting sorting (2016)")
 
 plotspec <- list(
   "All" = list(formula = sorting_formula_16, data = anes16, label = "All"),
@@ -441,6 +445,10 @@ tablespec <- list(
 models_to_table(tablespec,
                 output="results/tables/tex/fig2_table.tex",
                 title="Detailed results predicting sorting (2020)")
+lasso_tablespec <- lapply(tablespec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
+models_to_table(tablespec,
+                output="results/tables/tex/fig2_table_lasso.tex",
+                title="LASSO model results predicting sorting (2020)")
 
 plotspec <- list(
   "All" = list(formula = sorting_formula, data = anes20, label = "All"),
@@ -523,6 +531,20 @@ models_to_table(lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun,
 models_to_table(lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
                 output="results/tables/tex/fig3_rep_sample.tex",
                 title="Outcomes predicted by party-ideology sorting, Republicans (2016)")
+
+lassospec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
+models_to_table(lassospec,
+                output="results/tables/tex/fig3_full_sample_lasso.tex",
+                title="Outcomes predicted by LASSO models of party-ideology sorting, full sample (2016)")
+models_to_table(lapply(lassospec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig3_dem_sample_lasso.tex",
+                title="Outcomes predicted by LASSO models of party-ideology sorting, Democrats (2016)")
+models_to_table(lapply(lassospec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig3_ind_sample_lasso.tex",
+                title="Outcomes predicted by LASSO models of party-ideology sorting, Independents (2016)")
+models_to_table(lapply(lassospec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig3_rep_sample_lasso.tex",
+                title="Outcomes predicted by LASSO models of party-ideology sorting, Republicans (2016)")
 
 # TODO: double-check terms
 spec <- lapply(spec, \(x) list(data=x$data, fun=x$fun, formula=update.formula(x[['formula']],  ~ . + pid7_str + ideo)))
@@ -610,6 +632,20 @@ models_to_table(lapply(spec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun,
 models_to_table(lapply(spec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
                 output="results/tables/tex/fig4_rep_sample.tex",
                 title="Outcomes predicted by party-ideology sorting, Republicans (2020)")
+
+lassospec <- lapply(spec, \(x) (list(data = x$data, formula = x$formula, fun = lasso_new)))
+models_to_table(lassospec,
+                output="results/tables/tex/fig4_full_sample_lasso.tex",
+                title="Outcomes predicted by LASSO models of party-ideology sorting, full sample (2020)")
+models_to_table(lapply(lassospec, \(x) list(data=filter(x$data, dem == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig4_dem_sample_lasso.tex",
+                title="Outcomes predicted by LASSO models of party-ideology sorting, Democrats (2020)")
+models_to_table(lapply(lassospec, \(x) list(data=filter(x$data, ind == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig4_ind_sample_lasso.tex",
+                title="Outcomes predicted by LASSO models of party-ideology sorting, Independents (2020)")
+models_to_table(lapply(lassospec, \(x) list(data=filter(x$data, rep == 1), fun=x$fun, formula=update.formula(x[['formula']],  ~ . - rep - ind - pid7_str - ideo))),
+                output="results/tables/tex/fig4_rep_sample_lasso.tex",
+                title="Outcomes predicted by LASSO models of party-ideology sorting, Republicans (2020)")
 
 # TODO: double-check terms
 spec <- lapply(spec, \(x) list(data=x$data, fun=x$fun, formula=update.formula(x[['formula']],  ~ . + pid7_str + ideo)))
