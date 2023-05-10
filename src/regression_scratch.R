@@ -428,9 +428,9 @@ plotspec <- list(
 p1_supp <- make_predictors_plot(plotspec, "Predictors of party-ideology sorting, 2016 ANES")
 
 ggsave("results/figures/sorting_predictors_2016.pdf", plot = p1, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2016.pdf", plot = p1, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2016.png", plot = p1, dpi=400, width=16, height=9, units="in")
 ggsave("results/figures/sorting_predictors_2016_supp.pdf", plot = p1_supp, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2016_supp.pdf", plot = p1_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2016_supp.png", plot = p1_supp, dpi=400, width=16, height=9, units="in")
 
 # Figure 2 ----------------------------------------------------------------
 
@@ -475,9 +475,9 @@ plotspec <- list(
 p2_supp <- make_predictors_plot(plotspec, "Predictors of party-ideology sorting, 2016 ANES")
 
 ggsave("results/figures/sorting_predictors_2020.pdf", plot = p2, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2020.pdf", plot = p2, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020.png", plot = p2, dpi=400, width=16, height=9, units="in")
 ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=400, width=16, height=9, units="in")
-ggsave("results/figures/sorting_predictors_2020_supp.pdf", plot = p2_supp, dpi=400, width=16, height=9, units="in")
+ggsave("results/figures/sorting_predictors_2020_supp.png", plot = p2_supp, dpi=400, width=16, height=9, units="in")
 
 
 # Figure 3 ----------------------------------------------------------------
