@@ -1,3 +1,10 @@
+## 02-run_models.R
+##
+## This script runs all of the OLS and LASSO regressions and makes
+## all of the tables and figures. It assumes you've run 01-process_anes_data.R
+## first.
+##
+## TODO: Some comments/sections refer to old table names (e.g. A4).
 
 # Imports -----------------------------------------------------------------
 

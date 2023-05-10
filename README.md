@@ -1,6 +1,6 @@
 # Sorting
 
-This repository contains replication files for "Party-Ideology Sorting in the United States: Correlates and Consequences" by Ethan Busby, Andrew Ifedapo Thompson, and Stefan McCabe.
+This repository contains replication files for "Party-Ideology Sorting in the United States: Correlates and Consequences."
 
 To run the replication files, clone the repo, [download](https://electionstudies.org/data-center/) the Stata versions of the 2016 and 2020 ANES and place them in the `data/raw` subdirectory, and then run `bash replication.sh`.
 

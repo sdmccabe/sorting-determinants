@@ -1,8 +1,8 @@
-## Exploring ANES data - alternate approach
-## This script produces data similar to that in the "Exploring the ANES"
-## script, but with minor changes here and there.
+## 01-process_anes_data.R
 ##
-## I have tried to keep all variable names consistent between the two versions.
+## This script transforms the raw ANES data into the input data for the
+## regressions. Naming conventions have tried to follow the prior submission.
+
 
 
 # Preliminaries -----------------------------------------------------------
@@ -209,7 +209,6 @@ anes20 <- anes20 |>
     # for constructing Mason sorting variables
     pid7 = case_when(pid7 >= 90 ~ 4, TRUE ~ pid7),
     ideo = case_when(ideo >= 90 ~ 4, TRUE ~ ideo),
-    #ideo = reverse_code(ideo),
     male = gender == 1,
     female = gender == 2,
     white = race == 1,
@@ -278,7 +277,7 @@ anes20 <- anes20 |>
     # NOTE: sexism1 is a 7-point likert scale, but others are 5-point;
     # shouldn't they be weighted differently?
     SEXISM = (sexism1 + sexism2 + sexism3 + sexism4) / 4,
-    # NOTE: same thing - are nationalism itmes on the same scale?
+    # NOTE: same thing - are nationalism items on the same scale?
     nat1 = reverse_code(nat1),
     nat2 = reverse_code(nat2),
     nat3 = reverse_code(nat3),
@@ -300,7 +299,7 @@ anes20 <- anes20 |>
                             \(...) (mean(c(...), na.rm = TRUE))),
     # NOTE: these variables are specific shows, return 1 if any are mentioned,
     # 0 otherwise
-    # NOTE: what should na.rm be here? ethan has F
+    # NOTE: what should na.rm be here? I think TRUE
     news_fox = pmap_dbl(list(hannity, tucker, the_five, ingraham,
                              maccallum, baier, fox_and_friends),
                         \(...) (max(c(0, ...), na.rm = TRUE))),
@@ -309,7 +308,7 @@ anes20 <- anes20 |>
                           \(...) (max(c(0, ...), na.rm = TRUE))),
     news_cnn = pmap_dbl(list(tapper, anderson, cuomo, erin_burnett),
                         \(...) (max(c(0, ...), na.rm = TRUE))),
-    # NOTE: ethan has coded Refused as 0, should that be NA?
+    # NOTE: Should Refused be 0 or NA here?
     know_senateterm = know_senateterm == 6,
     know_spend = know_spend == 1,
     know_house = know_house == 1,
@@ -328,14 +327,10 @@ anes20 <- anes20 |>
     vio_justy = vio_justscale > 1,
     viojustbi = vio_justscale > 1,
     violence1 = violence / 5,
-    # NOTE: i think line 775 in ethan's code should have been
-    # commented out, and am ignoring it
     unrest = case_when(unrest == 99 ~ NA_real_, TRUE ~ unrest),
     unrest1 = unrest / 7,
     unrestbi = unrest > 4,
     fairelecbi = fairelec > 3,
-    # NOTE: double check `educ` vs `education`
-    # educ = case_when(educ == 95 ~ NA_real_, TRUE ~ educ),
     comp1.1 = reverse_code(comp1) / 5,
     comp2.1 = comp2 == 2,
     joinprotest = joined025 == 1,
@@ -397,7 +392,7 @@ anes20 <- anes20 |>
       TRUE ~ NA_real_,
     ),
     dem2 = dem2 / 5,
-    # NOTE: very slight divergence from ethan's code here re: rounding
+    # NOTE: very slight divergence from earlier code here re: rounding
     dem3 = round(dem3 / 7, 2),
     demsupport = pmap_dbl(list(dem1, dem2, dem3),
                           \(...) (mean(c(...), na.rm = FALSE))),
@@ -685,7 +680,7 @@ anes16 <- anes16 |>
     news_cnn = pmap_dbl(list(anderson, nancy_grace,
                              erin_burnett, cnn_en_espanol),
                         \(...) (max(c(0, ...), na.rm = TRUE))),
-    # NOTE: ethan has coded Refused as 0, should that be NA?
+    # NOTE: Should Refused be 0 or NA here?
     # TODO: double-check the answers in 2016 are the same as 2020
     know_senateterm = know_senateterm == 6,
     know_spend = know_spend == 1,
@@ -706,8 +701,6 @@ anes16 <- anes16 |>
     vio_justy = vio_justscale > 1,
     viojustbi = vio_justscale > 1,
     fairelecbi = fairelec > 3,
-    # TODO: resolve educ v. education
-    # educ = case_when(educ == 95 ~ NA_real_, TRUE ~ educ),
     comp1.1 = reverse_code(comp1) / 5,
     comp2.1 = comp2 == 2,
     joinprotest = joined025 == 1,
@@ -802,7 +795,8 @@ anes16 <- anes16 |>
 
 
 # ANES panel ----------------------------------------------------------------
-# NOTE: these variable names _are_ different (.x, .y is too confusing for me)
+# NOTE: these variable names _are_ different from earlier code
+# (.x, .y is too confusing for me)
 
 panel <- inner_join(anes20, anes16, by = "panel_id", suffix=c("_2020", "_2016"))
 panel$panel <- as.numeric(panel$sample_type == 2)
@@ -943,6 +937,4 @@ anes12 <- anes12 |>
 
 # Output ------------------------------------------------------------------
 
-
-# write out my updated version. this also contains the original data
 save.image("data/sorting_data.RData")
