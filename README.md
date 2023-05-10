@@ -7,8 +7,9 @@ To run the replication files, clone the repo, [download](https://electionstudies
 The results in the manuscript were produced in the following computing environment:
 
 <details>
-<summary>`sessionInfo()`</summary>
+<summary>Output of R sessionInfo()</summary>
 <br>
+
 ```
 R version 4.2.2 (2022-10-31)
 Platform: aarch64-apple-darwin20 (64-bit)
@@ -48,4 +49,5 @@ loaded via a namespace (and not attached):
  [91] rmarkdown_2.20      grid_4.2.2          readxl_1.4.2        reprex_2.0.2        digest_0.6.31       webshot_0.5.4      
  [97] munsell_0.5.0       GPfit_1.0-8         viridisLite_0.4.1   kableExtra_1.3.4   
 ```
+
 </details>
