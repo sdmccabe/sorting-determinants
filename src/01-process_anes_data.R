@@ -10,10 +10,6 @@
 library(tidyverse)
 library(haven)
 
-## load the original version of the data for comparison
-load("data/Sorting - 2020 ANES - updated.RData")
-
-
 ## Recode variables based on some predicate function. This
 ## is primarily used for recoding variables whose values
 ## fall in certain ranges to NA.
@@ -949,4 +945,4 @@ anes12 <- anes12 |>
 
 
 # write out my updated version. this also contains the original data
-save.image("data/stefan_sorting_data.RData")
+save.image("data/sorting_data.RData")

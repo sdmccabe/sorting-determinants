@@ -296,7 +296,7 @@ make_effects_plot <- function(spec, title) {
 
 # Data loading and preprocessing ------------------------------------------
 
-load("data/stefan_sorting_data.RData")
+load("data/sorting_data.RData")
 
 # rename var
 anes16$educ <- anes16$education
